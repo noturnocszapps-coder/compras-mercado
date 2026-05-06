@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isDataOwner() {
+      return isSignedIn() && request.auth.uid == resource.data.userId;
+    }
+
+    function isRequestOwner() {
+      return isSignedIn() && request.auth.uid == request.resource.data.userId;
+    }
+
+    // Profiles
+    match /profiles/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && request.resource.data.email == request.auth.token.email;
+      allow update: if isOwner(userId);
+    }
+
+    // Shopping Lists
+    match /shopping_lists/{listId} {
+      allow read: if isDataOwner();
+      allow create: if isRequestOwner();
+      allow update: if isDataOwner() && isRequestOwner();
+      allow delete: if isDataOwner();
+    }
+
+    // Shopping Items
+    match /shopping_items/{itemId} {
+      allow read: if isDataOwner();
+      allow create: if isRequestOwner();
+      allow update: if isDataOwner() && isRequestOwner();
+      allow delete: if isDataOwner();
+    }
+
+    // Home Inventory
+    match /home_inventory/{inventoryId} {
+      allow read: if isDataOwner();
+      allow create: if isRequestOwner();
+      allow update: if isDataOwner() && isRequestOwner();
+      allow delete: if isDataOwner();
+    }
+
+    // Price History
+    match /price_history/{historyId} {
+      allow read: if isDataOwner();
+      allow create: if isRequestOwner();
+      allow update: if isDataOwner() && isRequestOwner();
+      allow delete: if isDataOwner();
+    }
+
+    // AI Scans
+    match /ai_scans/{scanId} {
+      allow read: if isDataOwner();
+      allow create: if isRequestOwner();
+      allow update: if isDataOwner() && isRequestOwner();
+      allow delete: if isDataOwner();
+    }
+  }
+}

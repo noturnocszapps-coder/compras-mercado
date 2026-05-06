@@ -1,0 +1,131 @@
+{
+  "entities": {
+    "Profile": {
+      "title": "User Profile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "createdAt"]
+    },
+    "ShoppingList": {
+      "title": "Shopping List",
+      "description": "A collection of shopping items",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "userId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "finished", "archived"] },
+        "marketName": { "type": "string" },
+        "estimatedTotal": { "type": "number" },
+        "realTotal": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "finishedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "userId", "status", "createdAt"]
+    },
+    "ShoppingItem": {
+      "title": "Shopping Item",
+      "description": "An item within a shopping list",
+      "type": "object",
+      "properties": {
+        "listId": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "brand": { "type": "string" },
+        "estimatedPrice": { "type": "number" },
+        "paidPrice": { "type": "number" },
+        "marketName": { "type": "string" },
+        "isChecked": { "type": "boolean" },
+        "isPromotion": { "type": "boolean" },
+        "clubName": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["listId", "userId", "name", "category", "quantity", "isChecked", "createdAt"]
+    },
+    "HomeInventory": {
+      "title": "Home Inventory",
+      "description": "Items currently in stock at home",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "currentQuantity": { "type": "number" },
+        "minimumQuantity": { "type": "number" },
+        "unit": { "type": "string" },
+        "expirationDate": { "type": "string", "format": "date" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "name", "category", "currentQuantity", "createdAt"]
+    },
+    "PriceHistory": {
+      "title": "Price History",
+      "description": "Historical record of product prices",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "productName": { "type": "string" },
+        "brand": { "type": "string" },
+        "category": { "type": "string" },
+        "marketName": { "type": "string" },
+        "normalPrice": { "type": "number" },
+        "promoPrice": { "type": "number" },
+        "paidPrice": { "type": "number" },
+        "clubName": { "type": "string" },
+        "purchaseDate": { "type": "string", "format": "date" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "productName", "paidPrice", "purchaseDate", "createdAt"]
+    },
+    "AIScan": {
+      "title": "AI Scan Record",
+      "description": "Records of AI scans for products",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "scanType": { "type": "string" },
+        "extractedJson": { "type": "object" },
+        "confidence": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "extractedJson", "createdAt"]
+    }
+  },
+  "firestore": {
+    "profiles/{userId}": {
+      "schema": "Profile",
+      "description": "User profiles"
+    },
+    "shopping_lists/{listId}": {
+      "schema": "ShoppingList",
+      "description": "Shopping lists"
+    },
+    "shopping_items/{itemId}": {
+      "schema": "ShoppingItem",
+      "description": "Items in shopping lists"
+    },
+    "home_inventory/{inventoryId}": {
+      "schema": "HomeInventory",
+      "description": "Home inventory items"
+    },
+    "price_history/{historyId}": {
+      "schema": "PriceHistory",
+      "description": "Price history records"
+    },
+    "ai_scans/{scanId}": {
+      "schema": "AIScan",
+      "description": "AI scanning results"
+    }
+  }
+}

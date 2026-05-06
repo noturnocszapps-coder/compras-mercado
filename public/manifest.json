@@ -1,0 +1,16 @@
+{
+  "name": "CompraFácil IA",
+  "short_name": "CompraFácil",
+  "description": "Assistente inteligente de compras",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3737/3737372.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
