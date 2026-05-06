@@ -1,18 +1,53 @@
-import React from 'react';
-import { Outlet, NavLink } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import { BottomNav } from './BottomNav';
 import { Header } from './Header';
 import { useAuth } from '../context/AuthContext';
 import * as LucideIcons from 'lucide-react';
+import VoiceAssistant from './VoiceAssistant';
+import { db } from '../lib/firebase';
+import { collection, addDoc } from 'firebase/firestore';
+
+import { useUI } from '../context/UIContext';
 
 export const Layout: React.FC = () => {
   const { user, profile } = useAuth();
+  const { isVoiceAssistantOpen, closeVoiceAssistant, openVoiceAssistant } = useUI();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleVoiceAction = async (action: any) => {
+    console.log('Voice Action:', action);
+    if (!user) return;
+
+    if (action.action === 'addItem') {
+      const listId = location.pathname.startsWith('/listas/') ? location.pathname.split('/')[2] : null;
+      if (listId) {
+        await addDoc(collection(db, 'shopping_items'), {
+          ...action.data,
+          listId,
+          userId: user.uid,
+          isChecked: false,
+          createdAt: new Date().toISOString()
+        });
+      } else {
+        alert(`O item "${action.data.name}" foi interpretado. Entre em uma lista para adicionar via voz!`);
+      }
+    } else if (action.action === 'navigate') {
+      navigate(action.data.destination);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col pb-24 md:pb-0 md:pl-72 bg-[#F0F4F2]">
       {user && (
         <>
+          <VoiceAssistant 
+            isOpen={isVoiceAssistantOpen} 
+            onClose={closeVoiceAssistant} 
+            onAction={handleVoiceAction} 
+          />
           <Header />
           {/* Desktop Nav */}
           <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-72 bg-white border-r border-emerald-100 flex-col p-8 z-40">
@@ -58,7 +93,7 @@ export const Layout: React.FC = () => {
       <main className="flex-1 p-4 md:p-10 max-w-6xl mx-auto w-full">
         <Outlet />
       </main>
-      {user && <BottomNav />}
+      {user && <BottomNav onVoiceClick={openVoiceAssistant} />}
     </div>
   );
 };

@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { doc, onSnapshot, collection, query, where, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
+import { useUI } from '../context/UIContext';
+import VoiceAssistant from '../components/VoiceAssistant';
 import { ArrowLeft, Check, Camera, Mic, X, Save, ShoppingBag } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -10,11 +12,24 @@ import { motion, AnimatePresence } from 'motion/react';
 export default function MarketMode() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { isVoiceAssistantOpen, closeVoiceAssistant, openVoiceAssistant } = useUI();
   const navigate = useNavigate();
   const [list, setList] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
   const [tempPrice, setTempPrice] = useState('');
+
+  const handleVoiceAction = async (action: any) => {
+    if (action.action === 'checkItem') {
+      const item = items.find(i => i.name.toLowerCase().includes(action.data.name.toLowerCase()));
+      if (item) {
+        await updateDoc(doc(db, 'shopping_items', item.id), { 
+           isChecked: true, 
+           paidPrice: action.data.paidPrice || item.price || 0 
+        });
+      }
+    }
+  };
 
   const categories = [
     'Alimentação', 'Carnes e Mistura', 'Hortifruti', 'Bebidas', 'Padaria', 
@@ -83,6 +98,11 @@ export default function MarketMode() {
 
   return (
     <div className="flex flex-col gap-8 -mx-6 px-6 bg-[#F0F4F2] min-h-screen">
+      <VoiceAssistant 
+        isOpen={isVoiceAssistantOpen} 
+        onClose={closeVoiceAssistant} 
+        onAction={handleVoiceAction} 
+      />
       {/* Header Fixo */}
       <div className="sticky top-0 bg-primary-dark/95 backdrop-blur-md z-40 -mx-6 px-6 py-6 md:py-10 flex flex-col gap-6 md:gap-10 border-b-4 border-primary">
         <div className="flex items-center justify-between">
@@ -236,7 +256,10 @@ export default function MarketMode() {
 
       {/* Ações Rápidas Mercado */}
       <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-6 z-40">
-         <button className="w-20 h-20 bg-primary text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-emerald-400/50 hover:scale-110 active:scale-90 transition-all rotate-3 hover:rotate-0">
+         <button 
+           onClick={openVoiceAssistant}
+           className="w-20 h-20 bg-primary text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-emerald-400/50 hover:scale-110 active:scale-90 transition-all rotate-3 hover:rotate-0"
+         >
             <Mic size={32} strokeWidth={4} />
          </button>
          <button className="w-20 h-20 bg-blue-600 text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-blue-400/50 hover:scale-110 active:scale-90 transition-all -rotate-3 hover:rotate-0">

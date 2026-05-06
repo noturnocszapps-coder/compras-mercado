@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { collection, query, where, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../context/AuthContext';
-import { ShoppingBag, ChevronRight, TrendingUp, Package, Clock, Plus } from 'lucide-react';
+import { ShoppingBag, ChevronRight, TrendingUp, Package, Clock, Plus, Sparkles, ShieldCheck, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -170,6 +170,51 @@ export default function Dashboard() {
                 Finalize compras para ver seus dados
               </div>
             )}
+          </div>
+        </section>
+
+        {/* AI Suggestions Section */}
+        <section className="flex flex-col gap-6 lg:col-span-2">
+          <div className="flex items-center justify-between">
+             <div className="flex items-center gap-4">
+                <div className="w-2 h-8 bg-purple-500 rounded-full"></div>
+                <h3 className="text-2xl font-black">Inteligência de Recompra</h3>
+             </div>
+             <div className="text-[10px] font-black uppercase text-purple-400 tracking-widest bg-purple-50 px-3 py-1 rounded-full">Powered by Gemini</div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+             <div className="bg-white p-8 rounded-[40px] border-2 border-purple-50 flex flex-col gap-4 shadow-xl shadow-purple-900/5 relative overflow-hidden group">
+                <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 group-hover:scale-110 transition-transform">
+                   <Sparkles size={24} />
+                </div>
+                <div>
+                   <h4 className="font-black text-slate-900 uppercase italic">Sugestão de Arroz</h4>
+                   <p className="text-sm text-slate-400 font-medium italic">"Baseado no seu histórico, seu Arroz de 5kg deve acabar em 4 dias. Adicionar à próxima lista?"</p>
+                </div>
+                <button className="bold-button-primary !bg-purple-600 !text-[10px] !py-3 !px-6 !shadow-none self-start">ADICIONAR AGORA</button>
+             </div>
+
+             <div className="bg-white p-8 rounded-[40px] border-2 border-blue-50 flex flex-col gap-4 shadow-xl shadow-blue-900/5 relative overflow-hidden group">
+                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
+                   <ShieldCheck size={24} />
+                </div>
+                <div>
+                   <h4 className="font-black text-slate-900 uppercase italic">Economia Detectada</h4>
+                   <p className="text-sm text-slate-400 font-medium italic">"Detergente Ypê está com 15% de desconto no mercado que você frequenta. Aproveite para estocar!"</p>
+                </div>
+                <button className="bold-button-primary !bg-blue-600 !text-[10px] !py-3 !px-6 !shadow-none self-start">VER OFERTA</button>
+             </div>
+
+             <div className="bg-white p-8 rounded-[40px] border-2 border-emerald-50 flex flex-col gap-4 shadow-xl shadow-emerald-900/5 relative overflow-hidden group">
+                <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
+                   <Zap size={24} strokeWidth={3} />
+                </div>
+                <div>
+                   <h4 className="font-black text-slate-900 uppercase italic">Hábito de Segunda</h4>
+                   <p className="text-sm text-slate-400 font-medium italic">"Toda segunda você compra pão e leite. Quer que eu crie a lista automática de amanhã?"</p>
+                </div>
+                <button className="bold-button-primary !bg-emerald-600 !text-[10px] !py-3 !px-6 !shadow-none self-start">CRIAR LISTA</button>
+             </div>
           </div>
         </section>
       </div>

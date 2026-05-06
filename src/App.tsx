@@ -6,6 +6,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { UIProvider } from './context/UIContext';
 import { Layout } from './components/Layout';
 
 // Pages
@@ -39,24 +40,26 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
-          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-          <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
-          
-          <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/listas" element={<Lists />} />
-            <Route path="/listas/:id" element={<ListDetail />} />
-            <Route path="/estoque" element={<Inventory />} />
-            <Route path="/relatorios" element={<Reports />} />
-            <Route path="/configuracoes" element={<Settings />} />
-          </Route>
+      <UIProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+            
+            <Route element={<PrivateRoute><Layout /></PrivateRoute>}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/listas" element={<Lists />} />
+              <Route path="/listas/:id" element={<ListDetail />} />
+              <Route path="/estoque" element={<Inventory />} />
+              <Route path="/relatorios" element={<Reports />} />
+              <Route path="/configuracoes" element={<Settings />} />
+            </Route>
 
-          <Route path="/mercado/:id" element={<PrivateRoute><MarketMode /></PrivateRoute>} />
-        </Routes>
-      </Router>
+            <Route path="/mercado/:id" element={<PrivateRoute><MarketMode /></PrivateRoute>} />
+          </Routes>
+        </Router>
+      </UIProvider>
     </AuthProvider>
   );
 }

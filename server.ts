@@ -55,6 +55,46 @@ async function startServer() {
     }
   });
 
+  app.post("/api/ai/process", async (req, res) => {
+    try {
+      const { text, context } = req.body;
+      if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: "Gemini API Key missing" });
+      }
+
+      const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+
+      const prompt = `Você é o assistente do CompraFácil IA. 
+      O usuário disse: "${text}"
+      Contexto atual: ${JSON.stringify(context)}
+      
+      Retorne um JSON com a ação pretendida:
+      - action: "addItem", data: { name, quantity, unit, category, price }
+      - action: "checkItem", data: { name, paidPrice }
+      - action: "query", data: { question }
+      - action: "navigate", data: { destination }
+      
+      Categorias válidas: Alimentação, Carnes e Mistura, Hortifruti, Bebidas, Padaria, Higiene Pessoal, Limpeza, Pet, Bebê, Farmácia, Cuidados, Outros.
+      Retorne APENAS o JSON.`;
+
+      const result = await genAI.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [{ text: prompt }]
+      });
+      const responseText = result.text;
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        res.json(JSON.parse(jsonMatch[0]));
+      } else {
+        res.status(500).json({ error: "Failed to parse AI response" });
+      }
+    } catch (error) {
+      console.error("AI Process error:", error);
+      res.status(500).json({ error: "AI Process failed" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
