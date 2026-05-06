@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
@@ -11,7 +11,7 @@ export default async function handler(req: any, res: any) {
       return res.status(500).json({ error: "Gemini API Key missing" });
     }
 
-    const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `Você é o assistente do CompraFácil IA. 

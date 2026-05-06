@@ -12,11 +12,6 @@ export default function Landing() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col items-center gap-10 max-w-4xl"
       >
-        <div className="flex items-center gap-3 bg-emerald-100 text-emerald-700 px-6 py-2 rounded-full border border-emerald-200">
-           <Sparkles size={16} className="animate-pulse" />
-           <span className="text-[10px] font-black uppercase tracking-[0.2em]">O Futuro das Compras</span>
-        </div>
-
         <div className="w-24 h-24 bg-primary rounded-[32px] flex items-center justify-center shadow-2xl shadow-emerald-200 rotate-6 hover:rotate-0 transition-transform duration-500">
           <ShoppingBag size={48} color="white" strokeWidth={3} />
         </div>
