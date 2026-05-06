@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Mic, X, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { processVoiceCommand } from '../lib/ai';
 
 interface VoiceAssistantProps {
   isOpen: boolean;
@@ -17,9 +18,8 @@ export default function VoiceAssistant({ isOpen, onClose, onAction }: VoiceAssis
 
   useEffect(() => {
     if (isOpen) {
-      startListening();
-    } else {
-      stopListening();
+      setTranscript('');
+      setError(null);
     }
   }, [isOpen]);
 
@@ -48,12 +48,12 @@ export default function VoiceAssistant({ isOpen, onClose, onAction }: VoiceAssis
 
     recognition.onend = async () => {
       setIsListening(false);
-      if (transcript) {
-        processTranscript(transcript);
-      }
+      // Use the latest transcript from the local variable if state hasn't updated yet
+      // but in onend, transcript state should be correct.
     };
 
     recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event);
       setError('Erro ao capturar áudio. Tente falar novamente.');
       setIsListening(false);
     };
@@ -65,15 +65,11 @@ export default function VoiceAssistant({ isOpen, onClose, onAction }: VoiceAssis
     setIsListening(false);
   };
 
-  const processTranscript = async (text: string) => {
+  const handleProcess = async () => {
+    if (!transcript) return;
     setIsProcessing(true);
     try {
-      const response = await fetch('/api/ai/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
-      });
-      const result = await response.json();
+      const result = await processVoiceCommand(transcript);
       onAction(result);
       onClose();
     } catch (err) {
@@ -82,6 +78,12 @@ export default function VoiceAssistant({ isOpen, onClose, onAction }: VoiceAssis
       setIsProcessing(false);
     }
   };
+
+  useEffect(() => {
+    if (!isListening && transcript && isOpen && !isProcessing) {
+      handleProcess();
+    }
+  }, [isListening]);
 
   return (
     <AnimatePresence>
