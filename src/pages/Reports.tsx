@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { formatCurrency, cn } from '../lib/utils';
 import { TrendingUp, ShoppingBag, DollarSign, ArrowUpRight } from 'lucide-react';
+import { Card, Skeleton } from '../components/ui/Card';
 
 export default function Reports() {
   const { user } = useAuth();
@@ -50,7 +51,7 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-         <div className="bold-card p-10 flex flex-col gap-8">
+         <Card className="p-10 flex flex-col gap-8 shadow-sm">
             <div className="flex items-center justify-between">
                <h3 className="text-xl font-black uppercase tracking-tighter">Gastos por Compra</h3>
                <ArrowUpRight className="text-slate-200" size={32} />
@@ -66,9 +67,9 @@ export default function Reports() {
                   </BarChart>
                </ResponsiveContainer>
             </div>
-         </div>
+         </Card>
 
-         <div className="bold-card p-10 flex flex-col gap-8">
+         <Card className="p-10 flex flex-col gap-8 shadow-sm">
             <div className="flex items-center justify-between">
                <h3 className="text-xl font-black uppercase tracking-tighter">Distribuição de Valor</h3>
                <div className="w-8 h-8 rounded-full bg-emerald-50 border-4 border-emerald-100 italic font-black text-primary text-[8px] flex items-center justify-center">ROI</div>
@@ -96,7 +97,7 @@ export default function Reports() {
                   </PieChart>
                </ResponsiveContainer>
             </div>
-         </div>
+         </Card>
       </div>
     </div>
   );
@@ -110,7 +111,7 @@ const SummaryCard = ({ icon: Icon, label, value, color }: { icon: any, label: st
   };
 
   return (
-    <div className="bold-card p-8 flex items-center gap-6 group hover:-translate-y-1 transition-all">
+    <Card className="p-8 flex items-center gap-6 group">
        <div className={cn("w-16 h-16 rounded-[24px] flex items-center justify-center transition-all group-hover:scale-110", colorMap[color])}>
           <Icon size={32} strokeWidth={3} />
        </div>
@@ -118,6 +119,6 @@ const SummaryCard = ({ icon: Icon, label, value, color }: { icon: any, label: st
           <p className="text-[10px] text-slate-400 font-black uppercase tracking-[0.3em] italic mb-1">{label}</p>
           <p className="text-3xl font-black text-slate-900 tracking-tighter italic leading-none">{value}</p>
        </div>
-    </div>
+    </Card>
   );
 };

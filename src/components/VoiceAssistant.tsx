@@ -3,6 +3,8 @@ import { Mic, X, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { processVoiceCommand } from '../lib/ai';
+import { Button } from './ui/Button';
+import { trackEvent, AnalyticsEvent } from '../lib/analytics';
 
 interface VoiceAssistantProps {
   isOpen: boolean;
@@ -70,6 +72,7 @@ export default function VoiceAssistant({ isOpen, onClose, onAction }: VoiceAssis
     setIsProcessing(true);
     try {
       const result = await processVoiceCommand(transcript);
+      trackEvent(AnalyticsEvent.VOICE_USED, { transcript: transcript.substring(0, 50) });
       onAction(result);
       onClose();
     } catch (err) {
@@ -152,19 +155,20 @@ export default function VoiceAssistant({ isOpen, onClose, onAction }: VoiceAssis
 
             <div className="grid grid-cols-1 w-full gap-4">
               {isListening ? (
-                <button 
+                <Button 
+                  variant="secondary"
                   onClick={() => setIsListening(false)}
-                  className="bold-button-secondary !py-4 font-black"
+                  className="!py-4"
                 >
                   PARAR
-                </button>
+                </Button>
               ) : (
-                <button 
+                <Button 
                   onClick={startListening}
-                  className="bold-button-primary !bg-blue-600 !shadow-blue-100 !py-4 font-black"
+                  className="!bg-blue-600 !shadow-blue-100 !py-4"
                 >
-                  TENTAR NOVAMENTE
-                </button>
+                  {transcript ? 'TENTAR NOVAMENTE' : 'COMECAR A FALAR'}
+                </Button>
               )}
             </div>
           </motion.div>

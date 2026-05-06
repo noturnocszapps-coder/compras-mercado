@@ -9,6 +9,18 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility min-h-screen-safe {
+  min-height: 100dvh;
+}
+
 @layer base {
   body {
     @apply bg-[#F0F4F2] text-slate-900 antialiased;

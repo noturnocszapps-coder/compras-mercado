@@ -30,7 +30,7 @@ async function startServer() {
         model: "gemini-2.0-flash",
         contents: [
           {
-            text: prompt || "Analise esta imagem de um produto de supermercado ou etiqueta e retorne um JSON com: product_name, brand, quantity, unit, category, normal_price, promo_price, market, club_name, is_promotion (boolean), analysis. Retorne APENAS o JSON."
+            text: prompt || "Analise esta imagem de um produto de supermercado, etiqueta de preço ou nota fiscal. Identifique com precisão: product_name (nome legível), brand (marca), quantity (valor numérico), unit (unidade: kg, g, l, ml, un, pct), category (escolha uma: Hortifruti, Limpeza, Higiene, Açougue, Bebidas, Padaria, Frios, Congelados, Pet, Utilidades, Despensa), normal_price (número), promo_price (número), market (nome do mercado se visível), club_name (nome do clube de fidelidade se houver), is_promotion (boolean), analysis (breve descrição do que viu). Retorne APENAS um JSON puro."
           },
           {
             inlineData: {
@@ -64,18 +64,22 @@ async function startServer() {
 
       const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
-      const prompt = `Você é o assistente do CompraFácil IA. 
+      const prompt = `Você é o assistente inteligente do CompraFácil IA. Seu objetivo é ajudar o usuário a gerenciar listas de compras e estoque de forma rápida e premium.
       O usuário disse: "${text}"
-      Contexto atual: ${JSON.stringify(context)}
+      Contexto atual (ID da lista, itens, etc): ${JSON.stringify(context)}
       
-      Retorne um JSON com a ação pretendida:
+      Regras de Negócio:
+      1. Se o usuário quiser adicionar item mas não especificar quantidade, use 1.
+      2. Tente extrair unidade da fala (ex: "um quilo de arroz" -> unit: "kg").
+      3. Classifique em uma destas categorias: Hortifruti, Limpeza, Higiene, Açougue, Bebidas, Padaria, Frios, Congelados, Pet, Utilidades, Despensa.
+      
+      Ações possíveis:
       - action: "addItem", data: { name, quantity, unit, category, price }
       - action: "checkItem", data: { name, paidPrice }
-      - action: "query", data: { question }
-      - action: "navigate", data: { destination }
+      - action: "query", data: { question: "sua resposta amigável aqui" }
+      - action: "navigate", data: { destination: "/dashboard" | "/listas" | "/estoque" | "/perfil" }
       
-      Categorias válidas: Alimentação, Carnes e Mistura, Hortifruti, Bebidas, Padaria, Higiene Pessoal, Limpeza, Pet, Bebê, Farmácia, Cuidados, Outros.
-      Retorne APENAS o JSON.`;
+      Retorne APENAS o JSON puro. Não explique.`;
 
       const result = await genAI.models.generateContent({
         model: "gemini-2.0-flash",

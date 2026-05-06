@@ -6,14 +6,14 @@ export const Header: React.FC = () => {
   const { profile } = useAuth();
 
   return (
-    <header className="h-20 bg-white border-b border-emerald-100 flex items-center justify-between px-6 shadow-sm sticky top-0 z-30 md:hidden">
+    <header className="h-20 bg-white border-b border-emerald-100 flex items-center justify-between px-6 shadow-sm sticky top-0 z-30 md:hidden pt-safe">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-          <span className="font-black">CF</span>
+        <div className="flex flex-col -gap-1">
+          <h1 className="text-lg font-black tracking-tight text-slate-800 leading-none">
+            Compra Fácil
+          </h1>
+          <span className="text-[8px] font-black uppercase tracking-widest text-primary">by Roxou</span>
         </div>
-        <h1 className="text-xl font-black tracking-tight text-primary-dark uppercase">
-          COMPRAFÁCIL <span className="text-primary-light">IA</span>
-        </h1>
       </div>
       <div className="flex items-center gap-4">
         <button className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-400">

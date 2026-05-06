@@ -1,16 +1,31 @@
 {
-  "name": "CompraFácil IA",
-  "short_name": "CompraFácil",
-  "description": "Assistente inteligente de compras",
+  "name": "Compra Fácil by Roxou",
+  "short_name": "Compra Fácil",
+  "description": "Organize compras, estoque e economize no mercado com inteligência artificial.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "orientation": "portrait",
   "theme_color": "#10b981",
+  "background_color": "#f8fafc",
+  "categories": [
+    "shopping",
+    "finance",
+    "productivity"
+  ],
+  "lang": "pt-BR",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3737/3737372.png",
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

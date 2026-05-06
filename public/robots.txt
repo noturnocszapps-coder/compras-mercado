@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /login
+Disallow: /register
+Disallow: /dashboard
+
+Sitemap: https://ais-pre-xlz3m5vlefopuwwbxoj74a-245104714547.us-west2.run.app/sitemap.xml

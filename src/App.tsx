@@ -8,6 +8,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { UIProvider } from './context/UIContext';
 import { Layout } from './components/Layout';
+import { Toaster } from 'react-hot-toast';
+import OfflineStatus from './components/OfflineStatus';
 
 // Pages
 import Landing from './pages/Landing';
@@ -43,6 +45,21 @@ export default function App() {
     <AuthProvider>
       <UIProvider>
         <Router>
+          <OfflineStatus />
+          <Toaster 
+            position="top-center"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#fff',
+                color: '#0f172a',
+                borderRadius: '24px',
+                padding: '16px 24px',
+                fontWeight: 'bold',
+                boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1)',
+              },
+            }}
+          />
           <Routes>
             <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
             <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />

@@ -49,7 +49,7 @@ export default function Register() {
           </div>
           <div className="text-center">
             <h1 className="text-3xl font-black tracking-tight uppercase">Cadastrar</h1>
-            <p className="text-slate-400 font-bold mt-1 tracking-tight">O seu assistente de compras inteligente</p>
+            <p className="text-slate-400 font-bold mt-1 tracking-tight">Compra Fácil <span className="text-primary italic">by Roxou</span></p>
           </div>
         </div>
 

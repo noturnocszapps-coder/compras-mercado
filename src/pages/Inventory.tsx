@@ -4,6 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { Package, MoreVertical, Plus, Trash2, Calendar, Target, AlertTriangle } from 'lucide-react';
 import { formatDate, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { Button } from '../components/ui/Button';
+import { Card, Skeleton } from '../components/ui/Card';
+import { Modal } from '../components/ui/Modal';
+import { trackEvent, AnalyticsEvent } from '../lib/analytics';
 
 export default function Inventory() {
   const { user } = useAuth();
@@ -13,8 +17,7 @@ export default function Inventory() {
   const [newItem, setNewItem] = useState({ name: '', category: 'Alimentação', current_quantity: 0, minimum_quantity: 1, unit: 'un', expiration_date: '' });
 
   const categories = [
-    'Alimentação', 'Carnes e Mistura', 'Hortifruti', 'Bebidas', 'Padaria', 
-    'Higiene Pessoal', 'Limpeza', 'Pet', 'Bebê', 'Farmácia', 'Cuidados', 'Outros'
+    'Hortifruti', 'Limpeza', 'Higiene', 'Açougue', 'Bebidas', 'Padaria', 'Frios', 'Congelados', 'Mistura', 'Pet', 'Utilidades'
   ];
 
   useEffect(() => {
@@ -64,6 +67,7 @@ export default function Inventory() {
       
       if (error) throw error;
 
+      trackEvent(AnalyticsEvent.INVENTORY_UPDATE, { action: 'add', name: newItem.name });
       setShowModal(false);
       setNewItem({ name: '', category: 'Alimentação', current_quantity: 0, minimum_quantity: 1, unit: 'un', expiration_date: '' });
     } catch (err) { 
@@ -82,14 +86,15 @@ export default function Inventory() {
     if (error) console.error(error);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Deseja excluir este item do estoque?')) {
+  const handleDelete = async (id: string, name: string) => {
+    if (confirm(`Deseja excluir "${name}" do estoque?`)) {
       const { error } = await supabase
         .from('home_inventory')
         .delete()
         .eq('id', id);
       
       if (error) console.error(error);
+      else trackEvent(AnalyticsEvent.INVENTORY_UPDATE, { action: 'delete', name });
     }
   };
 
@@ -110,25 +115,31 @@ export default function Inventory() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {loading ? (
-             Array(3).fill(0).map((_, i) => <div key={i} className="h-60 bg-white/50 animate-pulse rounded-[40px] border-2 border-white" />)
+          <>
+            <Skeleton className="h-60 rounded-[40px]" />
+            <Skeleton className="h-60 rounded-[40px]" />
+            <Skeleton className="h-60 rounded-[40px]" />
+          </>
         ) : items.length === 0 ? (
-          <div className="col-span-full py-32 text-center flex flex-col items-center gap-6 border-4 border-dashed border-slate-100 rounded-[60px]">
-             <div className="w-24 h-24 bg-slate-50 rounded-[40px] flex items-center justify-center text-slate-100">
-                <Package size={64} strokeWidth={3} />
-             </div>
-             <div className="flex flex-col gap-2">
-                <p className="font-black text-2xl uppercase tracking-tighter text-slate-400">Despensa Silenciosa</p>
-                <p className="text-slate-400 font-bold italic">Seu estoque aguarda novos suprimentos.</p>
-             </div>
-             <button onClick={() => setShowModal(true)} className="bold-button-primary !px-12 !py-4">ADICIONAR PRIMEIRO ITEM</button>
+          <div className="col-span-full">
+            <Card className="py-32 text-center flex flex-col items-center gap-6 border-4 border-dashed border-slate-100 rounded-[60px] bg-transparent shadow-none" hover={false}>
+              <div className="w-24 h-24 bg-slate-50 rounded-[40px] flex items-center justify-center text-slate-100">
+                  <Package size={64} strokeWidth={3} />
+              </div>
+              <div className="flex flex-col gap-2">
+                  <p className="font-black text-2xl uppercase tracking-tighter text-slate-400">Despensa Silenciosa</p>
+                  <p className="text-slate-400 font-bold italic">Seu estoque aguarda novos suprimentos.</p>
+              </div>
+              <Button onClick={() => setShowModal(true)} size="lg">ADICIONAR PRIMEIRO ITEM</Button>
+            </Card>
           </div>
         ) : (
           items.map(item => {
              const isLow = (item.current_quantity || 0) <= (item.minimum_quantity || 0);
              return (
-               <div key={item.id} className={cn(
-                 "bold-card p-8 flex flex-col gap-6 relative overflow-hidden group transition-all",
-                 isLow ? "border-amber-400 bg-amber-50/30" : "hover:border-primary/50"
+               <Card key={item.id} className={cn(
+                 "p-8 flex flex-col gap-6 relative overflow-hidden group transition-all",
+                 isLow ? "border-amber-400 bg-amber-50/50" : "hover:border-primary/50"
                )}>
                   {isLow && (
                     <div className="absolute top-0 left-0 right-0 h-1.5 bg-amber-400"></div>
@@ -146,7 +157,7 @@ export default function Inventory() {
                            </div>
                         )}
                         <button 
-                          onClick={() => handleDelete(item.id)}
+                          onClick={() => handleDelete(item.id, item.name)}
                           className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
                         >
                            <Trash2 size={20} />
@@ -187,83 +198,67 @@ export default function Inventory() {
                         </div>
                      )}
                   </div>
-               </div>
+               </Card>
              );
           })
         )}
       </div>
 
-      <AnimatePresence>
-        {showModal && (
-          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-6">
-             <motion.div 
-               initial={{scale:0.9, opacity: 0}} 
-               animate={{scale:1, opacity: 1}} 
-               className="bg-white w-full max-w-lg rounded-[50px] p-12 flex flex-col gap-10 shadow-2xl relative overflow-hidden"
-             >
-                <div className="absolute top-0 left-0 w-full h-3 bg-primary"></div>
-                
-                <div className="flex flex-col gap-1">
-                   <h3 className="text-4xl font-black uppercase tracking-tighter">Novo Item</h3>
-                   <p className="text-slate-400 font-bold italic">Abasteça sua despensa inteligente.</p>
-                </div>
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Novo Item">
+        <form onSubmit={handleSave} className="flex flex-col gap-8">
+            <div className="flex flex-col gap-2">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-1">Produto</label>
+              <input 
+                type="text" 
+                placeholder="Ex: Leite Ninho" 
+                className="bold-input" 
+                value={newItem.name}
+                onChange={e => setNewItem({...newItem, name: e.target.value})}
+                required
+              />
+            </div>
 
-                <form onSubmit={handleSave} className="flex flex-col gap-8">
-                   <div className="flex flex-col gap-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-1">Produto</label>
-                      <input 
-                        type="text" 
-                        placeholder="Ex: Leite Ninho" 
-                        className="bold-input" 
-                        value={newItem.name}
-                        onChange={e => setNewItem({...newItem, name: e.target.value})}
-                        required
-                      />
-                   </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-1">Qtd Atual</label>
+                  <input 
+                    type="number" 
+                    placeholder="0" 
+                    className="bold-input" 
+                    value={newItem.current_quantity}
+                    onChange={e => setNewItem({...newItem, current_quantity: Number(e.target.value)})}
+                  />
+              </div>
+              <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-1">Mínimo</label>
+                  <input 
+                    type="number" 
+                    placeholder="1" 
+                    className="bold-input" 
+                    value={newItem.minimum_quantity}
+                    onChange={e => setNewItem({...newItem, minimum_quantity: Number(e.target.value)})}
+                  />
+              </div>
+            </div>
 
-                   <div className="grid grid-cols-2 gap-6">
-                      <div className="flex flex-col gap-2">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-1">Qtd Atual</label>
-                         <input 
-                            type="number" 
-                            placeholder="0" 
-                            className="bold-input" 
-                            value={newItem.current_quantity}
-                            onChange={e => setNewItem({...newItem, current_quantity: Number(e.target.value)})}
-                         />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-1">Mínimo</label>
-                         <input 
-                            type="number" 
-                            placeholder="1" 
-                            className="bold-input" 
-                            value={newItem.minimum_quantity}
-                            onChange={e => setNewItem({...newItem, minimum_quantity: Number(e.target.value)})}
-                         />
-                      </div>
-                   </div>
-
-                   <div className="flex gap-4 pt-4">
-                     <button 
-                       type="button" 
-                       onClick={() => setShowModal(false)} 
-                       className="bold-button-secondary flex-1 py-6 font-black"
-                     >
-                        CANCELAR
-                     </button>
-                     <button 
-                        type="submit" 
-                        className="bold-button-primary flex-1 py-6 font-black uppercase"
-                     >
-                        SALVAR ITEM
-                     </button>
-                   </div>
-                </form>
-             </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+            <div className="flex gap-4 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setShowModal(false)} 
+                className="flex-1 py-6"
+              >
+                CANCELAR
+              </Button>
+              <Button 
+                type="submit" 
+                className="flex-1 py-6"
+              >
+                SALVAR ITEM
+              </Button>
+            </div>
+        </form>
+      </Modal>
     </div>
   );
 }
