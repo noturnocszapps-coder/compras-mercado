@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { formatCurrency, cn } from '../lib/utils';
@@ -13,23 +12,26 @@ export default function Reports() {
 
   useEffect(() => {
     if (!user) return;
-    const q = query(
-      collection(db, 'shopping_lists'),
-      where('userId', '==', user.uid),
-      where('status', '==', 'finished'),
-      orderBy('finishedAt', 'desc')
-    );
+    
+    const fetchReports = async () => {
+      const { data, error } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'finished')
+        .order('finished_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching reports:', error);
+        return;
+      }
 
-    getDocs(q).then(snapshot => {
-      const docs = snapshot.docs.map(doc => doc.data());
-      setData(docs);
-
-      // Group by category is harder because it depends on items. 
-      // For MVP, we'll group by market or just total lists.
-      // Let's assume we want total spent per list for the bar chart.
-      const perList = docs.map(d => ({ name: d.name, value: d.realTotal || 0 }));
+      setData(data || []);
+      const perList = (data || []).map(d => ({ name: d.name, value: Number(d.real_total) || 0 }));
       setCategoryData(perList);
-    });
+    };
+
+    fetchReports();
   }, [user]);
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
@@ -42,9 +44,9 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <SummaryCard icon={TrendingUp} label="Total Investido" value={formatCurrency(data.reduce((acc, d) => acc + (d.realTotal || 0), 0))} color="primary" />
+        <SummaryCard icon={TrendingUp} label="Total Investido" value={formatCurrency(data.reduce((acc, d) => acc + (Number(d.real_total) || 0), 0))} color="primary" />
         <SummaryCard icon={ShoppingBag} label="Compras Realizadas" value={data.length.toString()} color="blue" />
-        <SummaryCard icon={DollarSign} label="Economia IA" value={formatCurrency(data.reduce((acc, d) => acc + ((d.estimatedTotal || 0) - (d.realTotal || 0)), 0))} color="amber" />
+        <SummaryCard icon={DollarSign} label="Economia IA" value={formatCurrency(data.reduce((acc, d) => acc + ((Number(d.estimated_total) || 0) - (Number(d.real_total) || 0)), 0))} color="amber" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">

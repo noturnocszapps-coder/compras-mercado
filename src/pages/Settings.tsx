@@ -1,15 +1,14 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { auth } from '../lib/firebase';
 import { User, Bell, Shield, LogOut, Heart, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await auth.signOut();
+    await signOut();
     navigate('/');
   };
 
@@ -19,10 +18,10 @@ export default function Settings() {
 
       <div className="bg-white p-6 rounded-3xl border border-gray-100 flex items-center gap-4">
          <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center text-primary text-2xl font-black">
-            {profile?.name?.[0].toUpperCase() || 'U'}
+            {profile?.full_name?.[0]?.toUpperCase() || 'U'}
          </div>
          <div>
-            <h3 className="text-xl font-bold">{profile?.name}</h3>
+            <h3 className="text-xl font-bold">{profile?.full_name}</h3>
             <p className="text-gray-400 text-sm">{profile?.email}</p>
          </div>
       </div>

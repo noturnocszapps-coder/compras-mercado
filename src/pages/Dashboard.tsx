@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { ShoppingBag, ChevronRight, TrendingUp, Package, Clock, Plus, Sparkles, ShieldCheck, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -18,50 +17,78 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
 
-    // Active Lists
-    const qActive = query(
-      collection(db, 'shopping_lists'),
-      where('userId', '==', user.uid),
-      where('status', '==', 'active'),
-      orderBy('createdAt', 'desc'),
-      limit(3)
-    );
-
-    const unsubscribeLists = onSnapshot(qActive, (snapshot) => {
-      setActiveLists(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    // Fetch Active Lists
+    const fetchActiveLists = async () => {
+      const { data, error } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(3);
+      
+      if (error) console.error('Error fetching active lists:', error);
+      else setActiveLists(data || []);
       setLoading(false);
-    });
+    };
 
-    // History (last 5 finished)
-    const qHistory = query(
-      collection(db, 'shopping_lists'),
-      where('userId', '==', user.uid),
-      where('status', '==', 'finished'),
-      orderBy('finishedAt', 'desc'),
-      limit(5)
-    );
+    // Fetch History
+    const fetchHistory = async () => {
+      const { data, error } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'finished')
+        .order('finished_at', { ascending: false })
+        .limit(5);
+      
+      if (error) console.error('Error fetching history:', error);
+      else setHistory(data || []);
+    };
 
-    getDocs(qHistory).then(snapshot => {
-      setHistory(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    // Fetch Inventory
+    const fetchInventory = async () => {
+      const { data, error } = await supabase
+        .from('home_inventory')
+        .select('current_quantity, minimum_quantity')
+        .eq('user_id', user.id);
+      
+      if (error) console.error('Error fetching inventory:', error);
+      else {
+        setInventoryStats({
+          total: data.length,
+          low: data.filter(i => (i.current_quantity || 0) <= (i.minimum_quantity || 0)).length
+        });
+      }
+    };
 
-    // Inventory
-    const qInv = query(collection(db, 'home_inventory'), where('userId', '==', user.uid));
-    getDocs(qInv).then(snapshot => {
-      const items = snapshot.docs.map(doc => doc.data());
-      setInventoryStats({
-        total: items.length,
-        low: items.filter(i => (i.currentQuantity || 0) <= (i.minimumQuantity || 0)).length
-      });
-    });
+    fetchActiveLists();
+    fetchHistory();
+    fetchInventory();
 
-    return () => unsubscribeLists();
+    // Set up real-time subscription for active lists
+    const listsSubscription = supabase
+      .channel('public:shopping_lists')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'shopping_lists',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        fetchActiveLists();
+        fetchHistory();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(listsSubscription);
+    };
   }, [user]);
 
   const chartData = history.slice().reverse().map(list => ({
     name: list.name.length > 8 ? list.name.substring(0, 8) + '...' : list.name,
-    gasto: list.realTotal || 0,
-    previsto: list.estimatedTotal || 0
+    gasto: list.real_total || 0,
+    previsto: list.estimated_total || 0
   }));
 
   return (
@@ -76,7 +103,7 @@ export default function Dashboard() {
         <StatCard 
           icon={TrendingUp} 
           label="Total este mês" 
-          value={formatCurrency(history.reduce((acc, l) => acc + (l.realTotal || 0), 0))} 
+          value={formatCurrency(history.reduce((acc, l) => acc + (Number(l.real_total) || 0), 0))} 
           color="bg-emerald-50 text-emerald-600"
         />
         <StatCard 
@@ -94,7 +121,7 @@ export default function Dashboard() {
         <StatCard 
           icon={Clock} 
           label="Última Compra" 
-          value={history[0] ? formatDate(history[0].finishedAt) : '--'} 
+          value={history[0] ? formatDate(history[0].finished_at) : '--'} 
           color="bg-slate-100 text-slate-600"
         />
       </div>
@@ -129,11 +156,11 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <h4 className="text-lg font-black text-slate-900 group-hover:text-primary transition-colors">{list.name}</h4>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{list.marketName || 'Mercado Geral'}</p>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">{list.market_name || 'Mercado Geral'}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xl font-black text-slate-900">{formatCurrency(list.estimatedTotal || 0)}</p>
+                    <p className="text-xl font-black text-slate-900">{formatCurrency(list.estimated_total || 0)}</p>
                     <p className="text-[10px] text-slate-400 uppercase tracking-widest font-black">Estimado</p>
                   </div>
                 </Link>

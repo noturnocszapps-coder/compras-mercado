@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, onSnapshot, collection, query, where, updateDoc, writeBatch } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { useUI } from '../context/UIContext';
 import VoiceAssistant from '../components/VoiceAssistant';
@@ -23,10 +22,15 @@ export default function MarketMode() {
     if (action.action === 'checkItem') {
       const item = items.find(i => i.name.toLowerCase().includes(action.data.name.toLowerCase()));
       if (item) {
-        await updateDoc(doc(db, 'shopping_items', item.id), { 
-           isChecked: true, 
-           paidPrice: action.data.paidPrice || item.price || 0 
-        });
+        const { error } = await supabase
+          .from('shopping_items')
+          .update({ 
+             is_checked: true, 
+             paid_price: action.data.paidPrice || item.paid_price || item.estimated_price || 0 
+          })
+          .eq('id', item.id);
+        
+        if (error) console.error(error);
       }
     }
   };
@@ -36,65 +40,97 @@ export default function MarketMode() {
     'Higiene Pessoal', 'Limpeza', 'Pet', 'Bebê', 'Farmácia', 'Cuidados', 'Outros'
   ];
 
+  const fetchItems = async () => {
+    if (!id || !user) return;
+    const { data, error } = await supabase
+      .from('shopping_items')
+      .select('*')
+      .eq('list_id', id);
+    
+    if (error) console.error(error);
+    else setItems(data || []);
+  };
+
   useEffect(() => {
     if (!user || !id) return;
 
-    const unsubList = onSnapshot(doc(db, 'shopping_lists', id), (doc) => {
-      setList({ id: doc.id, ...doc.data() });
-    });
+    const fetchList = async () => {
+      const { data, error } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (data) setList(data);
+    };
 
-    const qItems = query(
-      collection(db, 'shopping_items'),
-      where('listId', '==', id),
-      where('userId', '==', user.uid)
-    );
+    fetchList();
+    fetchItems();
 
-    const unsubItems = onSnapshot(qItems, (snapshot) => {
-      setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    });
+    const subscription = supabase
+      .channel(`market_items_${id}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'shopping_items',
+        filter: `list_id=eq.${id}`
+      }, () => {
+        fetchItems();
+      })
+      .subscribe();
 
     return () => {
-      unsubList();
-      unsubItems();
+      supabase.removeChannel(subscription);
     };
   }, [user, id]);
 
   const toggleCheck = async (itemId: string, checked: boolean) => {
-     // If checking, maybe open price input if not set? 
-     // For now, just toggle
-    await updateDoc(doc(db, 'shopping_items', itemId), { isChecked: !checked });
-    updateTotals();
+    const { error } = await supabase
+      .from('shopping_items')
+      .update({ is_checked: !checked })
+      .eq('id', itemId);
+    
+    if (error) console.error(error);
   };
 
   const savePrice = async (itemId: string) => {
     const price = parseFloat(tempPrice.replace(',', '.'));
     if (!isNaN(price)) {
-      await updateDoc(doc(db, 'shopping_items', itemId), { paidPrice: price, isChecked: true });
-      setEditingPrice(null);
-      setTempPrice('');
-      updateTotals();
+      const { error } = await supabase
+        .from('shopping_items')
+        .update({ paid_price: price, is_checked: true })
+        .eq('id', itemId);
+      
+      if (error) {
+        console.error(error);
+      } else {
+        setEditingPrice(null);
+        setTempPrice('');
+      }
     }
-  };
-
-  const updateTotals = async () => {
-    if (!id || !user) return;
-    const realTotal = items.reduce((acc, item) => (item.isChecked ? acc + (item.paidPrice || item.price || 0) * (item.quantity || 1) : acc), 0);
-    await updateDoc(doc(db, 'shopping_lists', id), { realTotal });
   };
 
   const finishShopping = async () => {
     if (confirm('Deseja finalizar esta compra?')) {
-      await updateDoc(doc(db, 'shopping_lists', id!), { 
-        status: 'finished', 
-        finishedAt: new Date().toISOString() 
-      });
-      navigate('/dashboard');
+      const { error } = await supabase
+        .from('shopping_lists')
+        .update({ 
+          status: 'finished', 
+          finished_at: new Date().toISOString() 
+        })
+        .eq('id', id!);
+      
+      if (error) {
+        console.error(error);
+      } else {
+        navigate('/dashboard');
+      }
     }
   };
 
-  const finishedItems = items.filter(i => i.isChecked).length;
+  const finishedItems = items.filter(i => i.is_checked).length;
   const progress = items.length > 0 ? (finishedItems / items.length) * 100 : 0;
-  const totalGasto = items.reduce((acc, item) => (item.isChecked ? acc + (item.paidPrice || item.price || 0) * (item.quantity || 1) : acc), 0);
+  const totalGasto = items.reduce((acc, item) => (item.is_checked ? acc + (Number(item.paid_price) || Number(item.estimated_price) || 0) * (Number(item.quantity) || 1) : acc), 0);
 
   return (
     <div className="flex flex-col gap-8 -mx-6 px-6 bg-[#F0F4F2] min-h-screen">
@@ -166,22 +202,22 @@ export default function MarketMode() {
                        key={item.id} 
                        className={cn(
                           "bold-card p-6 flex items-center gap-6 cursor-pointer active:scale-95 transition-all",
-                          item.isChecked ? "border-primary bg-emerald-50 shadow-inner" : "hover:border-slate-200"
+                          item.is_checked ? "border-primary bg-emerald-50 shadow-inner" : "hover:border-slate-200"
                        )}
-                       onClick={() => toggleCheck(item.id, item.isChecked)}
+                       onClick={() => toggleCheck(item.id, item.is_checked)}
                      >
                         <div className={cn(
                           "w-14 h-14 rounded-full flex items-center justify-center border-4 transition-all flex-shrink-0",
-                          item.isChecked ? "bg-primary border-primary text-white" : "bg-slate-50 border-slate-100 text-transparent"
+                          item.is_checked ? "bg-primary border-primary text-white" : "bg-slate-50 border-slate-100 text-transparent"
                         )}>
                            <Check size={32} strokeWidth={4} />
                         </div>
                         <div className="flex-1 min-w-0">
-                           <h4 className={cn("text-2xl font-black tracking-tight leading-tight uppercase italic", item.isChecked && "text-primary")}>{item.name}</h4>
+                           <h4 className={cn("text-2xl font-black tracking-tight leading-tight uppercase italic", item.is_checked && "text-primary")}>{item.name}</h4>
                            <div className="flex items-center gap-2 mt-2">
                               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{item.quantity} {item.unit}</span>
-                              {item.isChecked && (
-                                <span className="text-primary font-black italic">{formatCurrency(item.paidPrice || item.price || 0)}</span>
+                              {item.is_checked && (
+                                <span className="text-primary font-black italic">{formatCurrency(item.paid_price || item.estimated_price || 0)}</span>
                               )}
                            </div>
                         </div>
@@ -189,11 +225,11 @@ export default function MarketMode() {
                           onClick={(e) => {
                              e.stopPropagation();
                              setEditingPrice(item.id);
-                             setTempPrice(item.paidPrice?.toString() || item.price?.toString() || '');
+                             setTempPrice(item.paid_price?.toString() || item.estimated_price?.toString() || '');
                           }}
                           className={cn(
                              "w-14 h-14 rounded-2xl flex items-center justify-center transition-all",
-                             item.isChecked ? "bg-primary/10 text-primary" : "bg-slate-50 text-slate-300"
+                             item.is_checked ? "bg-primary/10 text-primary" : "bg-slate-50 text-slate-300"
                           )}
                         >
                            <ShoppingBag size={24} strokeWidth={3} />
@@ -261,9 +297,6 @@ export default function MarketMode() {
            className="w-20 h-20 bg-primary text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-emerald-400/50 hover:scale-110 active:scale-90 transition-all rotate-3 hover:rotate-0"
          >
             <Mic size={32} strokeWidth={4} />
-         </button>
-         <button className="w-20 h-20 bg-blue-600 text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-blue-400/50 hover:scale-110 active:scale-90 transition-all -rotate-3 hover:rotate-0">
-            <Camera size={32} strokeWidth={4} />
          </button>
       </div>
     </div>

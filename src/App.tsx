@@ -20,6 +20,7 @@ import MarketMode from './pages/MarketMode';
 import Inventory from './pages/Inventory';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import AuthCallback from './pages/AuthCallback';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -57,6 +58,7 @@ export default function App() {
             </Route>
 
             <Route path="/mercado/:id" element={<PrivateRoute><MarketMode /></PrivateRoute>} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
           </Routes>
         </Router>
       </UIProvider>

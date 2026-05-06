@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { collection, query, where, orderBy, onSnapshot, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { ShoppingBag, ChevronRight, Search, Plus, Trash2, Calendar, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -23,18 +22,36 @@ export default function Lists() {
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, 'shopping_lists'),
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setLists(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const fetchLists = async () => {
+      const { data, error } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) console.error('Error fetching lists:', error);
+      else setLists(data || []);
       setLoading(false);
-    });
+    };
 
-    return () => unsubscribe();
+    fetchLists();
+
+    // Realtime subscription
+    const subscription = supabase
+      .channel('lists_channel')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'shopping_lists',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        fetchLists();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
   }, [user]);
 
   const handleCreateList = async (e: React.FormEvent) => {
@@ -42,20 +59,25 @@ export default function Lists() {
     if (!user || !newName) return;
 
     try {
-      await addDoc(collection(db, 'shopping_lists'), {
-        name: newName,
-        marketName: newMarket,
-        userId: user.uid,
-        status: 'active',
-        estimatedTotal: 0,
-        realTotal: 0,
-        createdAt: new Date().toISOString()
-      });
+      const { error } = await supabase
+        .from('shopping_lists')
+        .insert({
+          name: newName,
+          market_name: newMarket,
+          user_id: user.id,
+          status: 'active',
+          estimated_total: 0,
+          real_total: 0
+        });
+      
+      if (error) throw error;
+      
       setShowNewModal(false);
       setNewName('');
       setNewMarket('');
     } catch (err) {
       console.error(err);
+      alert('Erro ao criar lista');
     }
   };
 
@@ -63,7 +85,15 @@ export default function Lists() {
     e.preventDefault();
     e.stopPropagation();
     if (confirm('Deseja excluir esta lista?')) {
-      await deleteDoc(doc(db, 'shopping_lists', id));
+      const { error } = await supabase
+        .from('shopping_lists')
+        .delete()
+        .eq('id', id);
+      
+      if (error) {
+        console.error(error);
+        alert('Erro ao excluir lista');
+      }
     }
   };
 
@@ -142,14 +172,14 @@ export default function Lists() {
                       <h3 className="text-2xl font-black text-slate-900 group-hover:text-primary transition-colors leading-tight">{list.name}</h3>
                       <p className="text-sm font-bold text-slate-400 flex items-center gap-2 mt-2">
                         <Target size={16} className="text-slate-200" />
-                        {list.marketName || 'Mercado Geral'}
+                        {list.market_name || 'Mercado Geral'}
                       </p>
                     </div>
 
                     <div className="flex items-center justify-between pt-6 border-t border-slate-50">
                       <div>
                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Estimado</p>
-                        <p className="text-2xl font-black text-slate-900 tracking-tighter">{formatCurrency(list.estimatedTotal || 0)}</p>
+                        <p className="text-2xl font-black text-slate-900 tracking-tighter">{formatCurrency(list.estimated_total || 0)}</p>
                       </div>
                       <div className="w-14 h-14 bg-bg-soft rounded-2xl flex items-center justify-center text-slate-300 group-hover:bg-primary group-hover:text-white group-hover:shadow-lg group-hover:shadow-emerald-200 transition-all">
                         <ChevronRight size={24} strokeWidth={3} />

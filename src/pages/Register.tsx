@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { supabase } from '../lib/supabase';
 import { Mail, Lock, User, UserPlus } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -15,16 +13,21 @@ export default function Register() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: name });
-      
-      await setDoc(doc(db, 'profiles', userCredential.user.uid), {
-        name,
+      const { error } = await supabase.auth.signUp({
         email,
-        createdAt: new Date().toISOString(),
+        password,
+        options: {
+          data: {
+            full_name: name,
+          }
+        }
       });
       
+      if (error) throw error;
+      
+      // Profiles are created via trigger/AuthContext logic
       navigate('/dashboard');
     } catch (err: any) {
       setError('Erro ao criar conta. Tente um e-mail diferente.');

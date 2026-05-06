@@ -6,9 +6,7 @@ import { Header } from './Header';
 import { useAuth } from '../context/AuthContext';
 import * as LucideIcons from 'lucide-react';
 import VoiceAssistant from './VoiceAssistant';
-import { db } from '../lib/firebase';
-import { collection, addDoc } from 'firebase/firestore';
-
+import { supabase } from '../lib/supabase';
 import { useUI } from '../context/UIContext';
 
 export const Layout: React.FC = () => {
@@ -24,13 +22,20 @@ export const Layout: React.FC = () => {
     if (action.action === 'addItem') {
       const listId = location.pathname.startsWith('/listas/') ? location.pathname.split('/')[2] : null;
       if (listId) {
-        await addDoc(collection(db, 'shopping_items'), {
-          ...action.data,
-          listId,
-          userId: user.uid,
-          isChecked: false,
-          createdAt: new Date().toISOString()
-        });
+        const { error } = await supabase
+          .from('shopping_items')
+          .insert({
+            name: action.data.name,
+            quantity: action.data.quantity,
+            unit: action.data.unit,
+            category: action.data.category,
+            estimated_price: action.data.price,
+            list_id: listId,
+            user_id: user.id,
+            is_checked: false
+          });
+        
+        if (error) console.error(error);
       } else {
         alert(`O item "${action.data.name}" foi interpretado. Entre em uma lista para adicionar via voz!`);
       }
@@ -80,10 +85,10 @@ export const Layout: React.FC = () => {
             
             <div className="mt-8 flex items-center gap-4 border-t border-slate-50 pt-8">
               <div className="w-12 h-12 bg-slate-200 rounded-full border-2 border-primary overflow-hidden flex items-center justify-center">
-                <span className="font-black text-slate-500">{profile?.name?.[0].toUpperCase()}</span>
+                <span className="font-black text-slate-500">{profile?.full_name?.[0]?.toUpperCase() || profile?.email?.[0]?.toUpperCase() || 'U'}</span>
               </div>
               <div>
-                <p className="text-sm font-black text-slate-900 leading-tight">{profile?.name}</p>
+                <p className="text-sm font-black text-slate-900 leading-tight">{profile?.full_name || profile?.email || 'Usuário'}</p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Família Oliveira</p>
               </div>
             </div>

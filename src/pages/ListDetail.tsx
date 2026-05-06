@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { doc, onSnapshot, collection, query, where, addDoc, updateDoc, deleteDoc, writeBatch, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Plus, Trash2, Camera, Mic, CheckCircle, Circle, Archive, Play, Settings2, MoreVertical, Search, Check } from 'lucide-react';
 import { formatCurrency, cn } from '../lib/utils';
@@ -28,69 +27,126 @@ export default function ListDetail() {
     'Higiene Pessoal', 'Limpeza', 'Pet', 'Bebê', 'Farmácia', 'Cuidados', 'Outros'
   ];
 
+  const fetchItems = async () => {
+    if (!id || !user) return;
+    const { data, error } = await supabase
+      .from('shopping_items')
+      .select('*')
+      .eq('list_id', id)
+      .eq('user_id', user.id);
+    
+    if (error) console.error('Error fetching items:', error);
+    else setItems(data || []);
+    setLoading(false);
+  };
+
   useEffect(() => {
     if (!user || !id) return;
 
-    const unsubList = onSnapshot(doc(db, 'shopping_lists', id), (doc) => {
-      if (!doc.exists()) {
+    const fetchList = async () => {
+      const { data, error } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) {
         navigate('/listas');
         return;
       }
-      setList({ id: doc.id, ...doc.data() });
-    });
+      setList(data);
+    };
 
-    const qItems = query(
-      collection(db, 'shopping_items'),
-      where('listId', '==', id),
-      where('userId', '==', user.uid)
-    );
+    fetchList();
+    fetchItems();
 
-    const unsubItems = onSnapshot(qItems, (snapshot) => {
-      setItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setLoading(false);
-    });
+    // Real-time subscription for items
+    const subscription = supabase
+      .channel(`items_list_${id}`)
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'shopping_items',
+        filter: `list_id=eq.${id}`
+      }, () => {
+        fetchItems();
+      })
+      .subscribe();
 
     return () => {
-      unsubList();
-      unsubItems();
+      supabase.removeChannel(subscription);
     };
   }, [user, id]);
+
+  useEffect(() => {
+    if (items.length > 0) {
+      updateTotals();
+    }
+  }, [items]);
 
   const handleAddItem = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!user || !id || !newItem.name) return;
 
     try {
-      await addDoc(collection(db, 'shopping_items'), {
-        ...newItem,
-        listId: id,
-        userId: user.uid,
-        isChecked: false,
-        createdAt: new Date().toISOString()
-      });
+      const { error } = await supabase
+        .from('shopping_items')
+        .insert({
+          name: newItem.name,
+          category: newItem.category,
+          quantity: newItem.quantity,
+          unit: newItem.unit,
+          estimated_price: newItem.price,
+          list_id: id,
+          user_id: user.id,
+          is_checked: false
+        });
+      
+      if (error) throw error;
+      
       setNewItem({ name: '', category: 'Alimentação', quantity: 1, unit: 'un', price: 0 });
       setShowAddModal(false);
-      updateTotals();
     } catch (err) {
       console.error(err);
+      alert('Erro ao adicionar item');
     }
   };
 
   const toggleCheck = async (itemId: string, checked: boolean) => {
-    await updateDoc(doc(db, 'shopping_items', itemId), { isChecked: !checked });
+    const { error } = await supabase
+      .from('shopping_items')
+      .update({ is_checked: !checked })
+      .eq('id', itemId);
+    
+    if (error) console.error(error);
   };
 
   const deleteItem = async (itemId: string) => {
     if (confirm('Remover item?')) {
-      await deleteDoc(doc(db, 'shopping_items', itemId));
+      const { error } = await supabase
+        .from('shopping_items')
+        .delete()
+        .eq('id', itemId);
+      
+      if (error) console.error(error);
     }
   };
 
   const updateTotals = async () => {
     if (!id || !user) return;
-    const estimated = items.reduce((acc, item) => acc + (item.price || 0) * (item.quantity || 1), 0);
-    const real = items.filter(i => i.isChecked).reduce((acc, item) => acc + (item.paidPrice || item.price || 0) * (item.quantity || 1), 0);
-    await updateDoc(doc(db, 'shopping_lists', id), { estimatedTotal: estimated, realTotal: real });
+    const estimated = items.reduce((acc, item) => acc + (Number(item.estimated_price) || 0) * (Number(item.quantity) || 1), 0);
+    const real = items.filter(i => i.is_checked).reduce((acc, item) => acc + (Number(item.paid_price) || Number(item.estimated_price) || 0) * (Number(item.quantity) || 1), 0);
+    
+    // Only update list if values changed significantly or to ensure sync
+    const { error } = await supabase
+      .from('shopping_lists')
+      .update({ 
+        estimated_total: estimated, 
+        real_total: real 
+      })
+      .eq('id', id);
+    
+    if (error) console.error('Error updating totals:', error);
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -120,7 +176,7 @@ export default function ListDetail() {
     reader.readAsDataURL(file);
   };
 
-  const finishedItems = items.filter(i => i.isChecked).length;
+  const finishedItems = items.filter(i => i.is_checked).length;
   const progress = items.length > 0 ? (finishedItems / items.length) * 100 : 0;
 
   const groupedItems = categories.reduce((acc, cat) => {
@@ -153,7 +209,7 @@ export default function ListDetail() {
               <div className="w-3 h-10 bg-primary rounded-full"></div>
               <h2 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none">{list?.name}</h2>
            </div>
-           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-7 italic">{list?.marketName || 'Supermercado'}</p>
+           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] pl-7 italic">{list?.market_name || 'Supermercado'}</p>
         </div>
 
         <div className="flex flex-col gap-3">
@@ -254,7 +310,7 @@ export default function ListDetail() {
           className={cn(
              "w-16 h-16 bg-blue-600 text-white rounded-[24px] flex items-center justify-center shadow-2xl transition-all active:scale-90 hover:rotate-12",
              scanning && "animate-spin"
-          )}
+           )}
           disabled={scanning}
         >
           <Camera size={28} strokeWidth={3} />
@@ -381,21 +437,21 @@ interface ItemRowProps {
 const ItemRow: React.FC<ItemRowProps> = ({ item, onToggle, onDelete }) => (
   <div className={cn(
     "bold-card p-6 flex flex-col gap-4 group transition-all h-full",
-    item.isChecked ? "opacity-50 grayscale bg-slate-50 border-slate-100" : "hover:border-primary/50"
+    item.is_checked ? "opacity-50 grayscale bg-slate-50 border-slate-100" : "hover:border-primary/50"
   )}>
     <div className="flex items-start justify-between gap-4">
       <button 
-        onClick={() => onToggle(item.id, item.isChecked)}
+        onClick={() => onToggle(item.id, item.is_checked)}
         className={cn(
           "w-10 h-10 rounded-full border-4 flex items-center justify-center transition-all flex-shrink-0",
-          item.isChecked ? "bg-primary border-primary text-white shadow-lg shadow-emerald-200 shadow-inner" : "border-slate-100 bg-slate-50 text-transparent"
+          item.is_checked ? "bg-primary border-primary text-white shadow-lg shadow-emerald-200 shadow-inner" : "border-slate-100 bg-slate-50 text-transparent"
         )}
       >
         <Check size={20} strokeWidth={4} />
       </button>
       <div className="flex-1 min-w-0">
-         <h4 className={cn("text-xl font-black text-slate-800 leading-tight group-hover:text-primary transition-colors", item.isChecked && "line-through italic text-slate-400")}>{item.name}</h4>
-         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1 italic">{item.category}</p>
+         <h4 className={cn("text-xl font-black text-slate-800 leading-tight group-hover:text-primary transition-colors", item.is_checked && "line-through italic text-slate-400")}>{item.name}</h4>
+         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mt-1 italic">{item.category}</p>
       </div>
       <button 
         onClick={() => onDelete(item.id)}
@@ -410,9 +466,9 @@ const ItemRow: React.FC<ItemRowProps> = ({ item, onToggle, onDelete }) => (
           <span className="font-black text-slate-900">{item.quantity}</span>
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{item.unit === 'un' ? 'Unidades' : item.unit}</span>
        </div>
-       {item.price > 0 && (
+       {(Number(item.estimated_price) > 0 || Number(item.paid_price) > 0) && (
          <div className="text-right">
-            <span className="font-black text-primary italic leading-none">{formatCurrency(item.price)}</span>
+            <span className="font-black text-primary italic leading-none">{formatCurrency(item.paid_price || item.estimated_price)}</span>
          </div>
        )}
     </div>
