@@ -81,6 +81,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const initializeAuth = async () => {
       try {
+        console.log("[STABILITY] Initializing Auth...");
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (!isMounted) return;
 
@@ -98,8 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error("[AUTH] Initialization error:", err);
       } finally {
         if (isMounted) {
+          console.log("[AUTH_LOADING_DONE] Initial session checked");
           setLoading(false);
-          console.log("[STABILITY] Auth initialization finished.");
         }
       }
     };
@@ -118,8 +119,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(true);
         try {
           await refreshProfile();
+        } catch (error) {
+          console.error("[AUTH] Change event refresh failure:", error);
         } finally {
-          if (isMounted) setLoading(false);
+          if (isMounted) {
+            console.log("[AUTH_LOADING_DONE] Event profile refreshed");
+            setLoading(false);
+          }
         }
       } else {
         setProfile(null);
