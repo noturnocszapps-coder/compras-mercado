@@ -10,7 +10,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'icons/*.png'],
+      includeAssets: ['favicon.ico', 'favicon-16x16.png', 'favicon-32x32.png', 'apple-touch-icon.png', 'og-image.png'],
       manifest: {
         name: 'Compra Fácil by Roxou',
         short_name: 'Compra Fácil',
@@ -19,6 +19,8 @@ export default defineConfig({
         background_color: '#f8fafc',
         display: 'standalone',
         orientation: 'portrait',
+        categories: ["shopping", "finance", "productivity"],
+        lang: 'pt-BR',
         icons: [
           {
             src: '/icons/icon-192.png',
@@ -33,18 +35,47 @@ export default defineConfig({
             purpose: 'any maskable'
           },
           {
-            src: '/icons/apple-touch-icon.png',
+            src: '/apple-touch-icon.png',
             sizes: '180x180',
             type: 'image/png'
           }
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        globPatterns: ['**/*.{js,css,ico,png,svg,webp}'],
         runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'pages',
+              networkTimeoutSeconds: 3,
+            }
+          },
+          {
+            urlPattern: /manifest\.json|robots\.txt|sitemap\.xml/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'config',
+            }
+          },
           {
             urlPattern: /^https:\/\/ais-.*\.run\.app\/api\/.*/i,
             handler: 'NetworkOnly'
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'images',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 Days
+              },
+            },
           }
         ]
       }

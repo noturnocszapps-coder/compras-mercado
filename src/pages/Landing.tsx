@@ -15,7 +15,7 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-6 py-4 pt-safe">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex flex-col gap-0">
-            <h1 className="text-xl font-black text-slate-900 leading-none">Compra Fácil</h1>
+            <span className="text-xl font-black text-slate-900 leading-none">Compra Fácil</span>
             <span className="text-[8px] font-black uppercase tracking-widest text-primary">by Roxou</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
@@ -47,10 +47,10 @@ export default function Landing() {
              transition={{ delay: 0.2 }}
              className="flex flex-col gap-4"
           >
-            <h2 className="text-5xl md:text-8xl font-black text-slate-900 leading-[0.95] tracking-tighter uppercase italic">
+            <h1 className="text-5xl md:text-8xl font-black text-slate-900 leading-[0.95] tracking-tighter uppercase italic">
               Economize com <br/>
               <span className="text-primary not-italic">Inteligência Artificial.</span>
-            </h2>
+            </h1>
             <p className="text-slate-500 max-w-2xl mx-auto text-lg md:text-xl font-bold leading-relaxed mt-4">
               Organize compras, controle estoque e descubra onde economizar de verdade usando o cérebro do ecossistema Roxou no seu mercado.
             </p>

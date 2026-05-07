@@ -85,8 +85,19 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 import { ENV } from './config/env';
+import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
+  useRegisterSW({
+    onNeedRefresh() {
+      console.log("[PWA] New version available, reloading...");
+      window.location.reload();
+    },
+    onOfflineReady() {
+      console.log("[PWA] App ready for offline use.");
+    }
+  });
+
   React.useEffect(() => {
     console.log("[BOOT] App mounted successfully.");
     console.log("[BOOT] Environment Configuration:", {
