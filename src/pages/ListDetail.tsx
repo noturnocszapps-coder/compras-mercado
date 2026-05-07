@@ -49,15 +49,16 @@ export default function ListDetail() {
       
       if (error) throw error;
       setItems(data || []);
+      console.log("[SAFE_FETCH_OK] ListDetail items");
     } catch (err) {
       console.error('[LIST_DETAIL] Error fetching items:', err);
-      toast.error('Erro ao carregar itens');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    let isMounted = true;
     if (!user || !id) return;
 
     const fetchList = async () => {
@@ -66,14 +67,18 @@ export default function ListDetail() {
           .from('shopping_lists')
           .select('*')
           .eq('id', id)
-          .maybeSingle(); // Using maybeSingle to avoid 406/single errors
+          .maybeSingle(); 
         
+        if (!isMounted) return;
+
         if (error || !data) {
           console.error('[LIST_DETAIL] List not found or error:', error);
+          console.error("[SAFE_FETCH_FAIL] ListDetail list");
           navigate('/listas');
           return;
         }
         setList(data);
+        console.log("[SAFE_FETCH_OK] ListDetail list");
       } catch (err) {
         console.error('[LIST_DETAIL] Critical error fetching list:', err);
         navigate('/listas');
@@ -92,11 +97,12 @@ export default function ListDetail() {
         table: 'shopping_items',
         filter: `list_id=eq.${id}`
       }, () => {
-        fetchItems();
+        if (isMounted) fetchItems();
       })
       .subscribe();
 
     return () => {
+      isMounted = false;
       supabase.removeChannel(subscription);
     };
   }, [user, id]);

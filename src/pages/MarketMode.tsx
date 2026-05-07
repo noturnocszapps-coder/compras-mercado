@@ -24,6 +24,7 @@ export default function MarketMode() {
   const [items, setItems] = useState<any[]>([]);
   const [editingPrice, setEditingPrice] = useState<string | null>(null);
   const [tempPrice, setTempPrice] = useState('');
+  const [loading, setLoading] = useState(true);
 
   const handleVoiceAction = async (action: any) => {
     if (action.action === 'checkItem') {
@@ -60,13 +61,17 @@ export default function MarketMode() {
       
       if (error) throw error;
       setItems(data || []);
+      console.log("[SAFE_FETCH_OK] MarketMode items");
     } catch (err) {
       console.error('[MARKET_MODE] Error fetching items:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     if (!user || !id) return;
+    let isMounted = true;
 
     const fetchList = async () => {
       try {
@@ -74,14 +79,18 @@ export default function MarketMode() {
           .from('shopping_lists')
           .select('*')
           .eq('id', id)
-          .maybeSingle(); // Using maybeSingle to avoid 406/single errors
+          .maybeSingle(); 
         
+        if (!isMounted) return;
+
         if (error || !data) {
           console.error('[MARKET_MODE] List not found or error:', error);
+          console.error("[SAFE_FETCH_FAIL] MarketMode list");
           navigate('/listas');
           return;
         }
         setList(data);
+        console.log("[SAFE_FETCH_OK] MarketMode list");
       } catch (err) {
         console.error('[MARKET_MODE] Critical error fetching list:', err);
         navigate('/listas');

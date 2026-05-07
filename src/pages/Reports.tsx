@@ -11,29 +11,42 @@ export default function Reports() {
   const { user } = useAuth();
   const [data, setData] = useState<any[]>([]);
   const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
+    let isMounted = true;
     
     const fetchReports = async () => {
-      const { data, error } = await supabase
-        .from('shopping_lists')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'finished')
-        .order('finished_at', { ascending: false });
-      
-      if (error) {
-        console.error('Error fetching reports:', error);
-        return;
-      }
+      try {
+        const { data, error } = await supabase
+          .from('shopping_lists')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('status', 'finished')
+          .order('finished_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching reports:', error);
+          console.error("[SAFE_FETCH_FAIL] Reports");
+          return;
+        }
 
-      setData(data || []);
-      const perList = (data || []).map(d => ({ name: d.name, value: Number(d.real_total) || 0 }));
-      setCategoryData(perList);
+        if (isMounted) {
+          setData(data || []);
+          const perList = (data || []).map(d => ({ name: d.name, value: Number(d.real_total) || 0 }));
+          setCategoryData(perList);
+          console.log("[SAFE_FETCH_OK] Reports");
+        }
+      } catch (err) {
+        console.error('[REPORTS] Critical error:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     };
 
     fetchReports();
+    return () => { isMounted = false; };
   }, [user]);
 
   const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];

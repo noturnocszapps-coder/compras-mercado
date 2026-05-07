@@ -17,11 +17,6 @@ export function useSubscription() {
     }
 
     const fetchSubscription = async () => {
-      if (SAFE_MODE) {
-        setSubscription(null);
-        setLoading(false);
-        return;
-      }
       try {
         const { data, error } = await supabase
           .from('subscriptions')
@@ -41,7 +36,7 @@ export function useSubscription() {
       }
     };
 
-    if (SAFE_MODE) return;
+    fetchSubscription();
 
     // Real-time listener
     const channel = supabase

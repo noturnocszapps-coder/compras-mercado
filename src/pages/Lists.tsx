@@ -33,29 +33,26 @@ export default function Lists() {
 
   const fetchLists = async () => {
     if (!user) return;
-    if (SAFE_MODE) console.log("[BOOT_STAGE] Lists: Fetching lists (SAFE_MODE)");
     try {
       const { data, error } = await supabase
         .from('shopping_lists')
-        .select('id, name, status, created_at, market_name, estimated_total')
+        .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(SAFE_MODE ? 20 : 100);
-      
-      // We don't check isMounted here because it might be called from handleCreateList
-      // but inside useEffect we will wrap it.
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('[LISTS] Error fetching lists:', error);
         setLists([]);
+        console.error("[SAFE_FETCH_FAIL] Lists");
       } else {
         setLists(data || []);
+        console.log("[SAFE_FETCH_OK] Lists");
       }
     } catch (err) {
       console.error('[LISTS] Critical error fetching lists:', err);
       setLists([]);
     } finally {
-      setLoading(false);
+      if (loading) setLoading(false);
     }
   };
 
@@ -69,7 +66,7 @@ export default function Lists() {
 
     safeFetch();
 
-    if (!user || SAFE_MODE) return;
+    if (!user) return;
 
     // Realtime subscription
     const channel = supabase.channel(`lists_page_${user.id}`);

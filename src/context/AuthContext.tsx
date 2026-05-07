@@ -1,9 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
-import { SAFE_MODE } from '../config/features';
-
-console.log("[BOOT_STAGE] AuthContext.tsx loaded");
 
 interface AuthContextType {
   user: User | null;
@@ -32,49 +29,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const refreshProfile = async () => {
-    if (SAFE_MODE) {
-      console.log("[BOOT_STAGE] Auth: refreshProfile called (SAFE_MODE)");
-    }
-    
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       
       if (user) {
-        if (SAFE_MODE) console.log("[BOOT_STAGE] Auth: User identified", user.id);
-        
         // Fetch profile with error handling - handle case where user exists in Auth but not in public.profiles yet
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
-          .maybeSingle(); // Using maybeSingle to avoid 406/single errors
+          .maybeSingle(); 
         
         if (profileError && profileError.code !== 'PGRST116') {
           console.error("[AUTH] Profile fetch error:", profileError);
         }
 
         if (profileData) {
-          if (SAFE_MODE) console.log("[BOOT_STAGE] Auth: Profile data loaded");
           setProfile(profileData);
         } else {
           // Profile doesn't exist, try to create it (self-healing)
           console.log("[AUTH] Profile not found, creating one for:", user.id);
-          const { data: newProfile, error: upsertError } = await supabase
-            .from('profiles')
-            .upsert({
-              id: user.id,
-              full_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Usuário',
-              email: user.email,
-              avatar_url: user.user_metadata.avatar_url,
-            })
-            .select()
-            .maybeSingle();
-          
-          if (upsertError) {
-            console.error("[AUTH] Profile creation error:", upsertError);
+          try {
+            const { data: newProfile, error: upsertError } = await supabase
+              .from('profiles')
+              .upsert({
+                id: user.id,
+                full_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Usuário',
+                email: user.email,
+                avatar_url: user.user_metadata.avatar_url,
+              })
+              .select()
+              .maybeSingle();
+            
+            if (upsertError) {
+              console.error("[AUTH] Profile creation error:", upsertError);
+            }
+            if (newProfile) setProfile(newProfile);
+          } catch (upsertErr) {
+            console.error("[AUTH] Catch profile creation error:", upsertErr);
           }
-          if (newProfile) setProfile(newProfile);
         }
       }
     } catch (err) {
@@ -84,15 +78,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let isMounted = true;
-    console.log("[BOOT_STAGE] AuthProvider initialized");
 
     const initializeAuth = async () => {
       try {
-        console.log("[BOOT_STAGE] Auth: Initializing Session...");
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (!isMounted) return;
 
-        console.log("[BOOT_STAGE] Auth: Session result:", session ? "Active" : "None");
+        if (sessionError) {
+          console.error("[AUTH] Session error during init:", sessionError);
+        }
+
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -103,8 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error("[AUTH] Initialization error:", err);
       } finally {
         if (isMounted) {
-          console.log("[BOOT_STAGE] Auth: Initialization complete");
           setLoading(false);
+          console.log("[STABILITY] Auth initialization finished.");
         }
       }
     };
@@ -112,7 +107,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     initializeAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`[AUTH_EVENT] ${event}`);
       if (!isMounted) return;
       
       setSession(session);
@@ -120,11 +116,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         setLoading(true);
-        await refreshProfile();
+        try {
+          await refreshProfile();
+        } finally {
+          if (isMounted) setLoading(false);
+        }
       } else {
         setProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
     return () => {

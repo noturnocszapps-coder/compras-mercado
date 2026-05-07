@@ -10,7 +10,6 @@ import { getGreetingSP, getMonthRangeSP } from '../lib/date';
 // import InstallPWAButton from '../components/InstallPWAButton';
 import { Card, Skeleton } from '../components/ui/Card';
 import { trackEvent, AnalyticsEvent } from '../lib/analytics';
-import { SAFE_MODE } from '../config/features';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -26,13 +25,8 @@ export default function Dashboard() {
     let isMounted = true;
     if (!user) return;
 
-    if (SAFE_MODE) {
-      console.log("[BOOT_STAGE] Dashboard: Simplified fetch (SAFE_MODE)");
-    }
-
     // Fetch Month Total and Savings
     const fetchMonthStats = async () => {
-      if (SAFE_MODE) return; // Skip in safe mode
       try {
         const { start, end } = getMonthRangeSP();
         const { data, error } = await supabase
@@ -66,7 +60,6 @@ export default function Dashboard() {
 
     // Fetch Active Lists
     const fetchActiveLists = async () => {
-      console.log("[BOOT_STAGE] Dashboard: Fetching Active Lists...");
       try {
         const { data, error } = await supabase
           .from('shopping_lists')
@@ -74,7 +67,7 @@ export default function Dashboard() {
           .eq('user_id', user.id)
           .eq('status', 'active')
           .order('created_at', { ascending: false })
-          .limit(SAFE_MODE ? 5 : 3);
+          .limit(3);
         
         if (!isMounted) return;
 
@@ -83,6 +76,7 @@ export default function Dashboard() {
           setActiveLists([]);
         } else {
           setActiveLists(data || []);
+          console.log("[SAFE_FETCH_OK] Dashboard active lists");
         }
       } catch (err) {
         console.error('[DASHBOARD] Critical error in active lists:', err);
@@ -94,7 +88,6 @@ export default function Dashboard() {
 
     // Fetch History
     const fetchHistory = async () => {
-      if (SAFE_MODE) return; // Skip in safe mode
       try {
         const { data, error } = await supabase
           .from('shopping_lists')
@@ -120,7 +113,6 @@ export default function Dashboard() {
 
     // Fetch Inventory
     const fetchInventory = async () => {
-      if (SAFE_MODE) return; // Skip in safe mode
       try {
         const { data, error } = await supabase
           .from('home_inventory')
@@ -151,31 +143,27 @@ export default function Dashboard() {
     trackEvent(AnalyticsEvent.ECONOMY_SCORE_CHECK, { score: economyScore });
 
     // Set up real-time subscription for active lists
-    if (!SAFE_MODE) {
-      const listsChannel = supabase.channel(`dashboard_${user.id}`);
-      
-      listsChannel
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'shopping_lists',
-          filter: `user_id=eq.${user.id}`
-        }, () => {
-          if (isMounted) {
-            fetchActiveLists();
-            fetchHistory();
-            fetchMonthStats();
-          }
-        })
-        .subscribe();
+    const listsChannel = supabase.channel(`dashboard_${user.id}`);
+    
+    listsChannel
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'shopping_lists',
+        filter: `user_id=eq.${user.id}`
+      }, () => {
+        if (isMounted) {
+          fetchActiveLists();
+          fetchHistory();
+          fetchMonthStats();
+        }
+      })
+      .subscribe();
 
-      return () => {
-        isMounted = false;
-        supabase.removeChannel(listsChannel);
-      };
-    } else {
-       return () => { isMounted = false; };
-    }
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(listsChannel);
+    };
   }, [user]);
 
   const chartData = (history || []).slice().reverse().map(list => ({
@@ -183,48 +171,6 @@ export default function Dashboard() {
     gasto: Number(list.real_total) || 0,
     previsto: Number(list.estimated_total) || 0
   }));
-
-  if (SAFE_MODE) {
-     return (
-       <div className="flex flex-col gap-8 pb-10">
-         <div className="flex flex-col gap-1">
-           <h2 className="text-2xl font-black text-gray-900">{getGreetingSP()}</h2>
-           <p className="text-gray-500">[SAFE_MODE] Painel Simplificado de Diagnóstico</p>
-         </div>
-
-         <section className="flex flex-col gap-6">
-           <div className="flex items-center gap-4">
-             <div className="w-2 h-8 bg-primary rounded-full"></div>
-             <h3 className="text-2xl font-black">Suas Listas Dinâmicas</h3>
-           </div>
-           
-           <div className="flex flex-col gap-4">
-              {activeLists.length === 0 && !loading ? (
-                 <p className="text-slate-400 font-bold p-8 bg-white rounded-3xl border border-slate-100 italic">Nenhuma lista encontrada.</p>
-              ) : activeLists.map(list => (
-                 <Link key={list.id} to={`/listas/${list.id}`}>
-                    <Card className="p-6 flex items-center justify-between">
-                       <h4 className="text-lg font-black text-slate-900">{list.name}</h4>
-                       <ChevronRight size={20} className="text-slate-300" />
-                    </Card>
-                 </Link>
-              ))}
-           </div>
-           <Link to="/listas" className="bold-button-primary self-start">VER TODAS AS LISTAS</Link>
-         </section>
-
-         <div className="p-8 bg-slate-900 rounded-[40px] text-white">
-            <h4 className="text-xl font-black mb-4 uppercase italic">Sistema Logged</h4>
-            <div className="font-mono text-xs text-emerald-400 space-y-1">
-               <p>&gt; Supabase: OK</p>
-               <p>&gt; Auth: {user?.email}</p>
-               <p>&gt; ID: {user?.id}</p>
-               <p>&gt; Modo: Diagnóstico</p>
-            </div>
-         </div>
-       </div>
-     );
-  }
 
   return (
     <div className="flex flex-col gap-8 pb-10">
@@ -243,8 +189,6 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-
-      {/* <InstallPWAButton /> */}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">

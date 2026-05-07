@@ -35,12 +35,13 @@ export default function Inventory() {
         
         if (error) {
           console.error('[INVENTORY] Error fetching inventory:', error);
+          console.error("[SAFE_FETCH_FAIL] Inventory");
           return;
         }
         
         if (isMounted) {
           setItems(data || []);
-          setLoading(false);
+          console.log("[SAFE_FETCH_OK] Inventory");
         }
       } catch (err) {
         console.error('[INVENTORY] Critical error in fetchInventory:', err);
