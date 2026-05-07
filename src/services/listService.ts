@@ -9,6 +9,7 @@ export interface CreateListData {
 
 export const listService = {
   async createList({ name, market_name, user_id, household_id }: CreateListData) {
+    console.log("[CREATE_LIST] Iniciando criação com:", { name, market_name, user_id, household_id });
     try {
       const { data, error } = await supabase
         .from('shopping_lists')
@@ -24,8 +25,15 @@ export const listService = {
         .select()
         .single();
       
-      return { data, error };
+      if (error) {
+        console.error("[CREATE_LIST] Erro do Supabase:", error);
+        throw error;
+      }
+      
+      console.log("[CREATE_LIST] Lista criada com sucesso:", data);
+      return { data, error: null };
     } catch (error: any) {
+      console.error("[CREATE_LIST] Exceção capturada:", error);
       return { data: null, error };
     }
   },

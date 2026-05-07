@@ -77,7 +77,7 @@ export default function Lists() {
     }
     
     if (!user) {
-      toast.error('Você precisa estar logado.');
+      toast.error('Sessão expirada. Faça login novamente.');
       return;
     }
 
@@ -90,15 +90,37 @@ export default function Lists() {
     setIsCreating(true);
     const creationToast = toast.loading('Criando lista...');
 
+    // Timeout de segurança: 12 segundos
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('TIMEOUT')), 12000)
+    );
+
     try {
-      const { data, error } = await listService.createList({
+      console.log("[CREATE_LIST] Payload:", {
+        name: trimmedName,
+        market_name: newMarket.trim() || null,
+        user_id: user.id
+      });
+
+      const responsePromise = listService.createList({
         name: trimmedName,
         market_name: newMarket.trim() || null,
         user_id: user.id,
         household_id: profile?.household_id || null,
       });
+
+      // Race between the service and the timeout
+      const { data, error }: any = await Promise.race([responsePromise, timeoutPromise]);
       
-      if (error) throw error;
+      if (error) {
+        console.error("[CREATE_LIST] Erro:", error);
+        if (error.code === '42501') {
+          throw new Error('Permissão negada ao criar lista. Verifique as políticas do Supabase.');
+        }
+        throw error;
+      }
+      
+      console.log("[CREATE_LIST] Resultado:", data);
       
       trackEvent(AnalyticsEvent.LIST_CREATED, { market: newMarket });
       toast.success('Lista criada com sucesso!', { id: creationToast });
@@ -112,7 +134,11 @@ export default function Lists() {
       }
     } catch (err: any) {
       console.error('Create List Error:', err);
-      toast.error(err.message || 'Não foi possível criar a lista.', { id: creationToast });
+      const errorMessage = err.message === 'TIMEOUT' 
+        ? 'A operação demorou muito. Tente novamente.' 
+        : (err.message || 'Não foi possível criar a lista.');
+        
+      toast.error(errorMessage, { id: creationToast });
     } finally {
       setIsCreating(false);
     }

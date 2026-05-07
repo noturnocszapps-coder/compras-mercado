@@ -1,6 +1,9 @@
 {
-  "name": "CompraFácil IA",
+  "name": "Compra Facil by Roxou",
   "description": "Assistente inteligente de compras com IA, scanner de produtos e comando de voz, focado em simplicidade e acessibilidade.",
-  "requestFramePermissions": ["camera", "microphone"],
-  "majorCapabilities": ["AI-powered product scanning", "Voice commands", "Shopping management"]
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": []
 }
