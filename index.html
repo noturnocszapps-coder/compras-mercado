@@ -62,6 +62,23 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Service Worker "Kill Switch" to clear potentially broken caches from previous PWA attempts -->
+    <script>
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            for(let registration of registrations) {
+              registration.unregister().then(function(success) {
+                if (success) console.log("[BOOT] Old Service Worker unregistered successfully.");
+              });
+            }
+          });
+        }
+      } catch (e) {
+        console.error("[BOOT] SW lookup failed", e);
+      }
+      console.log("[BOOT] Entry point script loaded.");
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

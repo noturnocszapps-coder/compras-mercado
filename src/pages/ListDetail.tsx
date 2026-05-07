@@ -143,7 +143,11 @@ export default function ListDetail() {
 
   const handleNameChange = (val: string) => {
     setNewItem({ ...newItem, name: val });
-    const suggs = getSuggestions(val);
+    
+    // Prioritize categories already used in this list to make it contextual
+    const activeCategories = Array.from(new Set(items.map(i => i.category)));
+    
+    const suggs = getSuggestions(val, activeCategories);
     setSuggestions(suggs);
     setShowSuggestions(suggs.length > 0);
 

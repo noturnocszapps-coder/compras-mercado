@@ -61,9 +61,29 @@ export const parseSmartInput = (input: string): ParsedItem => {
   };
 };
 
-export const getSuggestions = (input: string): string[] => {
+export const getSuggestions = (input: string, preferredCategories: string[] = []): string[] => {
   if (input.length < 2) return [];
   const normalized = input.toLowerCase();
-  const allItems = Object.values(CATEGORY_MAP).flat();
-  return Array.from(new Set(allItems.filter(item => item.startsWith(normalized)).slice(0, 5)));
+  
+  // 1. Collect items from preferred categories first
+  let prioritizedItems: string[] = [];
+  if (preferredCategories.length > 0) {
+    preferredCategories.forEach(cat => {
+      if (CATEGORY_MAP[cat]) {
+        prioritizedItems = [...prioritizedItems, ...CATEGORY_MAP[cat]];
+      }
+    });
+  }
+
+  const matchesPrioritized = prioritizedItems
+    .filter(item => item.startsWith(normalized));
+
+  // 2. Global items (all categories)
+  const allGlobalItems = Object.values(CATEGORY_MAP).flat();
+  const globalMatches = allGlobalItems.filter(item => item.startsWith(normalized));
+  
+  // Combine, remove duplicates (preserving order)
+  const combined = [...matchesPrioritized, ...globalMatches];
+  
+  return Array.from(new Set(combined)).slice(0, 5);
 };
