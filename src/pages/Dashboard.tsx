@@ -7,7 +7,6 @@ import { formatCurrency, formatDate, cn } from '../lib/utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { motion, AnimatePresence } from 'motion/react';
 import { getGreetingSP, getMonthRangeSP } from '../lib/date';
-// import InstallPWAButton from '../components/InstallPWAButton';
 import { Card, Skeleton } from '../components/ui/Card';
 import { trackEvent, AnalyticsEvent } from '../lib/analytics';
 

@@ -71,28 +71,21 @@
         @keyframes spin { to { transform: rotate(360deg); } }
       </style>
     </div>
-    <!-- Service Worker "Kill Switch" -->
+    <!-- Service Worker "Kill Switch" & Version Control -->
     <script>
+      window.__APP_BUILD__ = Date.now();
       console.log("[BOOT] Phase 1: Cleaning legacy service workers...");
-      try {
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            if (registrations.length === 0) console.log("[BOOT] No active service workers found.");
-            for(let registration of registrations) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then(registrations => {
+            for (const registration of registrations) {
               registration.unregister()
-                .then(function(success) {
-                  if (success) console.log("[BOOT] Legacy SW unregistered.");
-                })
-                .catch(function(err) {
-                  console.warn("[BOOT] Failed to unregister SW:", err);
+                .then(success => {
+                  if (success) console.log("[BOOT] SW unregistered successfully.");
                 });
             }
-          }).catch(function(err) {
-            console.warn("[BOOT] Failed to get SW registrations:", err);
-          });
-        }
-      } catch (e) {
-        console.error("[BOOT] SW lookup failed", e);
+          })
+          .catch(console.error);
       }
       console.log("[BOOT] Phase 2: Loading main script...");
     </script>

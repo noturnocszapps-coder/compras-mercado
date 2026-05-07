@@ -5,6 +5,7 @@ import { listService } from '../services/listService';
 import { ShoppingBag, ChevronRight, Search, Plus, Trash2, Calendar, Target, Loader2, Sparkles } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
+import { withTimeout } from '../lib/safety';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
 import { Button } from '../components/ui/Button';
@@ -111,12 +112,7 @@ export default function Lists() {
 
     setIsCreating(true);
     const creationToast = toast.loading('Criando lista...');
-
-    // Timeout de segurança: 12 segundos
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('TIMEOUT')), 12000)
-    );
-
+    
     try {
       console.log("[CREATE_LIST] Enviando para service:", {
         name: trimmedName,
@@ -124,14 +120,16 @@ export default function Lists() {
         user_id: user.id
       });
 
-      const responsePromise = listService.createList({
-        name: trimmedName,
-        market_name: newMarket.trim() || null,
-        user_id: user.id
-      });
-
-      // Race between the service and the timeout
-      const response: any = await Promise.race([responsePromise, timeoutPromise]);
+      const response: any = await withTimeout(
+        listService.createList({
+          name: trimmedName,
+          market_name: newMarket.trim() || null,
+          user_id: user.id
+        }),
+        12000,
+        'A operação demorou muito. Tente novamente.'
+      );
+      
       const { data, error } = response;
       
       if (error) {

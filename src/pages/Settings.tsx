@@ -12,7 +12,6 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { cn } from '../lib/utils';
 import { getNowSP } from '../lib/date';
-// import InstallPWAButton from '../components/InstallPWAButton';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
@@ -143,7 +142,6 @@ export default function Settings() {
          </Card>
       </div>
 
-      {/* <InstallPWAButton /> */}
 
       <div className="flex flex-col gap-2">
          <h4 className="text-xs font-black uppercase text-gray-400 px-4">Ajuda e Suporte</h4>
