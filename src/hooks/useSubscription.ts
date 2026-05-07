@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { Subscription, isPremium } from '../lib/premium';
+import { SAFE_MODE } from '../config/features';
 
 export function useSubscription() {
   const { user } = useAuth();
@@ -16,6 +17,11 @@ export function useSubscription() {
     }
 
     const fetchSubscription = async () => {
+      if (SAFE_MODE) {
+        setSubscription(null);
+        setLoading(false);
+        return;
+      }
       try {
         const { data, error } = await supabase
           .from('subscriptions')
@@ -35,7 +41,7 @@ export function useSubscription() {
       }
     };
 
-    fetchSubscription();
+    if (SAFE_MODE) return;
 
     // Real-time listener
     const channel = supabase

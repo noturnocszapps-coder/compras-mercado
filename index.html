@@ -61,23 +61,40 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
-    <!-- Service Worker "Kill Switch" to clear potentially broken caches from previous PWA attempts -->
+    <div id="root">
+      <div style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f8fafc; color: #64748b;">
+        <div style="width: 48px; hieght: 48px; border: 4px solid #e2e8f0; border-top-color: #10b981; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite;"></div>
+        <p style="margin-top: 16px; font-weight: 700; color: #0f172a; tracking: -0.02em;">INICIALIZANDO COMPRA FÁCIL...</p>
+        <p style="margin-top: 4px; font-size: 12px; font-weight: 500;">Ecossistema Roxou®</p>
+      </div>
+      <style>
+        @keyframes spin { to { transform: rotate(360deg); } }
+      </style>
+    </div>
+    <!-- Service Worker "Kill Switch" -->
     <script>
+      console.log("[BOOT] Phase 1: Cleaning legacy service workers...");
       try {
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            if (registrations.length === 0) console.log("[BOOT] No active service workers found.");
             for(let registration of registrations) {
-              registration.unregister().then(function(success) {
-                if (success) console.log("[BOOT] Old Service Worker unregistered successfully.");
-              });
+              registration.unregister()
+                .then(function(success) {
+                  if (success) console.log("[BOOT] Legacy SW unregistered.");
+                })
+                .catch(function(err) {
+                  console.warn("[BOOT] Failed to unregister SW:", err);
+                });
             }
+          }).catch(function(err) {
+            console.warn("[BOOT] Failed to get SW registrations:", err);
           });
         }
       } catch (e) {
         console.error("[BOOT] SW lookup failed", e);
       }
-      console.log("[BOOT] Entry point script loaded.");
+      console.log("[BOOT] Phase 2: Loading main script...");
     </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>

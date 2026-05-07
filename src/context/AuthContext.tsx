@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User, Session } from '@supabase/supabase-js';
+import { SAFE_MODE } from '../config/features';
+
+console.log("[BOOT_STAGE] AuthContext.tsx loaded");
 
 interface AuthContextType {
   user: User | null;
@@ -29,11 +32,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const refreshProfile = async () => {
+    if (SAFE_MODE) {
+      console.log("[BOOT_STAGE] Auth: refreshProfile called (SAFE_MODE)");
+    }
+    
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
       
       if (user) {
+        if (SAFE_MODE) console.log("[BOOT_STAGE] Auth: User identified", user.id);
+        
         // Fetch profile with error handling - handle case where user exists in Auth but not in public.profiles yet
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
@@ -46,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (profileData) {
+          if (SAFE_MODE) console.log("[BOOT_STAGE] Auth: Profile data loaded");
           setProfile(profileData);
         } else {
           // Profile doesn't exist, try to create it (self-healing)
@@ -74,12 +84,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     let isMounted = true;
+    console.log("[BOOT_STAGE] AuthProvider initialized");
 
     const initializeAuth = async () => {
       try {
+        console.log("[BOOT_STAGE] Auth: Initializing Session...");
         const { data: { session } } = await supabase.auth.getSession();
         if (!isMounted) return;
 
+        console.log("[BOOT_STAGE] Auth: Session result:", session ? "Active" : "None");
         setSession(session);
         setUser(session?.user ?? null);
         
@@ -89,7 +102,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (err) {
         console.error("[AUTH] Initialization error:", err);
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          console.log("[BOOT_STAGE] Auth: Initialization complete");
+          setLoading(false);
+        }
       }
     };
 

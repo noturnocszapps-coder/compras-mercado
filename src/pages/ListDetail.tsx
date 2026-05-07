@@ -40,15 +40,21 @@ export default function ListDetail() {
 
   const fetchItems = async () => {
     if (!id || !user) return;
-    const { data, error } = await supabase
-      .from('shopping_items')
-      .select('*')
-      .eq('list_id', id)
-      .eq('user_id', user.id);
-    
-    if (error) console.error('Error fetching items:', error);
-    else setItems(data || []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from('shopping_items')
+        .select('*')
+        .eq('list_id', id)
+        .eq('user_id', user.id);
+      
+      if (error) throw error;
+      setItems(data || []);
+    } catch (err) {
+      console.error('[LIST_DETAIL] Error fetching items:', err);
+      toast.error('Erro ao carregar itens');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -125,7 +131,7 @@ export default function ListDetail() {
           is_checked: false
         })
         .select()
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
       
@@ -145,7 +151,7 @@ export default function ListDetail() {
     setNewItem({ ...newItem, name: val });
     
     // Prioritize categories already used in this list to make it contextual
-    const activeCategories = Array.from(new Set(items.map(i => i.category)));
+    const activeCategories = Array.from(new Set(items.map(i => i.category || 'Outros'))) as string[];
     
     const suggs = getSuggestions(val, activeCategories);
     setSuggestions(suggs);
@@ -181,48 +187,62 @@ export default function ListDetail() {
   };
 
   const toggleCheck = async (itemId: string, checked: boolean) => {
-    // Optimistic update
-    setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_checked: !checked } : i));
+    try {
+      // Optimistic update
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_checked: !checked } : i));
 
-    const { error } = await supabase
-      .from('shopping_items')
-      .update({ is_checked: !checked })
-      .eq('id', itemId);
-    
-    if (error) {
-      console.error(error);
-      fetchItems(); // Rollback if error
-    } else if (!checked) {
-      toast.success('Item marcado!', { icon: '✅' });
+      const { error } = await supabase
+        .from('shopping_items')
+        .update({ is_checked: !checked })
+        .eq('id', itemId);
+      
+      if (error) throw error;
+      
+      if (!checked) {
+        toast.success('Item marcado!', { icon: '✅' });
+      }
+    } catch (err) {
+      console.error('[LIST_DETAIL] Error toggling check:', err);
+      toast.error('Erro ao atualizar item');
+      fetchItems(); // Rollback
     }
   };
 
   const deleteItem = async (itemId: string) => {
     if (confirm('Remover item?')) {
-      const { error } = await supabase
-        .from('shopping_items')
-        .delete()
-        .eq('id', itemId);
-      
-      if (error) console.error(error);
+      try {
+        const { error } = await supabase
+          .from('shopping_items')
+          .delete()
+          .eq('id', itemId);
+        
+        if (error) throw error;
+      } catch (err) {
+        console.error('[LIST_DETAIL] Error deleting item:', err);
+        toast.error('Erro ao excluir item');
+      }
     }
   };
 
   const updateTotals = async () => {
     if (!id || !user) return;
-    const estimated = items.reduce((acc, item) => acc + (Number(item.estimated_price) || 0) * (Number(item.quantity) || 1), 0);
-    const real = items.filter(i => i.is_checked).reduce((acc, item) => acc + (Number(item.paid_price) || Number(item.estimated_price) || 0) * (Number(item.quantity) || 1), 0);
-    
-    // Only update list if values changed significantly or to ensure sync
-    const { error } = await supabase
-      .from('shopping_lists')
-      .update({ 
-        estimated_total: estimated, 
-        real_total: real 
-      })
-      .eq('id', id);
-    
-    if (error) console.error('Error updating totals:', error);
+    try {
+      const estimated = items.reduce((acc, item) => acc + (Number(item.estimated_price) || 0) * (Number(item.quantity) || 1), 0);
+      const real = items.filter(i => i.is_checked).reduce((acc, item) => acc + (Number(item.paid_price) || Number(item.estimated_price) || 0) * (Number(item.quantity) || 1), 0);
+      
+      // Only update list if values changed significantly or to ensure sync
+      const { error } = await supabase
+        .from('shopping_lists')
+        .update({ 
+          estimated_total: estimated, 
+          real_total: real 
+        })
+        .eq('id', id);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error('[LIST_DETAIL] Error updating totals:', err);
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {

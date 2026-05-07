@@ -8,6 +8,7 @@ import { Button } from '../components/ui/Button';
 import { Card, Skeleton } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { trackEvent, AnalyticsEvent } from '../lib/analytics';
+import toast from 'react-hot-toast';
 
 export default function Inventory() {
   const { user } = useAuth();
@@ -92,23 +93,33 @@ export default function Inventory() {
 
   const updateQuantity = async (id: string, newQty: number) => {
     if (newQty < 0) return;
-    const { error } = await supabase
-      .from('home_inventory')
-      .update({ current_quantity: newQty })
-      .eq('id', id);
-    
-    if (error) console.error(error);
+    try {
+      const { error } = await supabase
+        .from('home_inventory')
+        .update({ current_quantity: newQty })
+        .eq('id', id);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error('[INVENTORY] Error updating quantity:', err);
+      toast.error('Erro ao atualizar quantidade');
+    }
   };
 
   const handleDelete = async (id: string, name: string) => {
     if (confirm(`Deseja excluir "${name}" do estoque?`)) {
-      const { error } = await supabase
-        .from('home_inventory')
-        .delete()
-        .eq('id', id);
-      
-      if (error) console.error(error);
-      else trackEvent(AnalyticsEvent.INVENTORY_UPDATE, { action: 'delete', name });
+      try {
+        const { error } = await supabase
+          .from('home_inventory')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        trackEvent(AnalyticsEvent.INVENTORY_UPDATE, { action: 'delete', name });
+      } catch (err) {
+        console.error('[INVENTORY] Error deleting item:', err);
+        toast.error('Erro ao excluir item');
+      }
     }
   };
 

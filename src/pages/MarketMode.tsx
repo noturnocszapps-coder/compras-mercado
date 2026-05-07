@@ -27,17 +27,21 @@ export default function MarketMode() {
 
   const handleVoiceAction = async (action: any) => {
     if (action.action === 'checkItem') {
-      const item = items.find(i => i.name.toLowerCase().includes(action.data.name.toLowerCase()));
-      if (item) {
-        const { error } = await supabase
-          .from('shopping_items')
-          .update({ 
-             is_checked: true, 
-             paid_price: action.data.paidPrice || item.paid_price || item.estimated_price || 0 
-          })
-          .eq('id', item.id);
-        
-        if (error) console.error(error);
+      try {
+        const item = items.find(i => i.name.toLowerCase().includes(action.data.name.toLowerCase()));
+        if (item) {
+          const { error } = await supabase
+            .from('shopping_items')
+            .update({ 
+               is_checked: true, 
+               paid_price: action.data.paidPrice || item.paid_price || item.estimated_price || 0 
+            })
+            .eq('id', item.id);
+          
+          if (error) throw error;
+        }
+      } catch (err) {
+        console.error('[MARKET_MODE] Voice action error:', err);
       }
     }
   };
@@ -48,13 +52,17 @@ export default function MarketMode() {
 
   const fetchItems = async () => {
     if (!id || !user) return;
-    const { data, error } = await supabase
-      .from('shopping_items')
-      .select('*')
-      .eq('list_id', id);
-    
-    if (error) console.error(error);
-    else setItems(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('shopping_items')
+        .select('*')
+        .eq('list_id', id);
+      
+      if (error) throw error;
+      setItems(data || []);
+    } catch (err) {
+      console.error('[MARKET_MODE] Error fetching items:', err);
+    }
   };
 
   useEffect(() => {
@@ -101,34 +109,40 @@ export default function MarketMode() {
   }, [user, id]);
 
   const toggleCheck = async (itemId: string, checked: boolean) => {
-    // Optimistic Update
-    setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_checked: !checked } : i));
+    try {
+      // Optimistic Update
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_checked: !checked } : i));
 
-    const { error } = await supabase
-      .from('shopping_items')
-      .update({ is_checked: !checked })
-      .eq('id', itemId);
-    
-    if (error) {
-      console.error(error);
+      const { error } = await supabase
+        .from('shopping_items')
+        .update({ is_checked: !checked })
+        .eq('id', itemId);
+      
+      if (error) throw error;
+    } catch (err) {
+      console.error('[MARKET_MODE] Error toggling check:', err);
       // Revert if error
       setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_checked: checked } : i));
+      toast.error('Erro ao atualizar item');
     }
   };
 
   const savePrice = async (itemId: string) => {
     const price = parseFloat(tempPrice.replace(',', '.'));
     if (!isNaN(price)) {
-      const { error } = await supabase
-        .from('shopping_items')
-        .update({ paid_price: price, is_checked: true })
-        .eq('id', itemId);
-      
-      if (error) {
-        console.error(error);
-      } else {
+      try {
+        const { error } = await supabase
+          .from('shopping_items')
+          .update({ paid_price: price, is_checked: true })
+          .eq('id', itemId);
+        
+        if (error) throw error;
+        
         setEditingPrice(null);
         setTempPrice('');
+      } catch (err) {
+        console.error('[MARKET_MODE] Error saving price:', err);
+        toast.error('Erro ao salvar preço');
       }
     }
   };

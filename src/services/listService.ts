@@ -28,7 +28,7 @@ export const listService = {
           real_total: 0
         })
         .select('*')
-        .single();
+        .maybeSingle();
       
       if (error) {
         console.error("[CREATE_LIST_SUPABASE_ERROR]", {

@@ -139,7 +139,7 @@ export default function Settings() {
       <div className="flex flex-col gap-2">
          <h4 className="text-xs font-black uppercase text-gray-400 px-4">Ecossistema Roxou</h4>
          <Card className="overflow-hidden p-0">
-            <SettingItem icon={Layers} label="Explorar Apps Roxou" onClick={() => setActiveModal('ecosystem')} />
+            <SettingItem icon={Layers} label="Explorar Apps Roxou" onClick={() => navigate('/ecosystem')} />
          </Card>
       </div>
 

@@ -20,7 +20,7 @@ export default function Landing() {
           </div>
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">Funcionalidades</a>
-            <a href="#ecosystem" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">Ecossistema</a>
+            <Link to="/ecosystem" className="text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-colors">Ecossistema</Link>
           </div>
           <div className="flex items-center gap-4">
             <Link to="/login" className="text-xs font-black uppercase tracking-widest text-slate-900 px-4 py-2 hover:bg-slate-50 rounded-xl transition-all">Entrar</Link>

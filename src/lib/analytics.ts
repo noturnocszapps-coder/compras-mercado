@@ -1,4 +1,5 @@
 import { ENV } from '../config/env';
+import { SAFE_MODE } from '../config/features';
 
 /**
  * Compra Fácil Analytics Helper
@@ -25,6 +26,8 @@ export enum AnalyticsEvent {
 }
 
 export const trackEvent = (event: AnalyticsEvent, data?: Record<string, any>) => {
+  if (SAFE_MODE) return;
+  
   if (ENV.isProd) {
     // Here we would integrate with PostHog or Vercel Analytics using ENV.analytics
     console.log(`[ROXOU_ANALYTICS] ${event}`, data);

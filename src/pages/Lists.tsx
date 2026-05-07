@@ -13,6 +13,7 @@ import { Modal } from '../components/ui/Modal';
 import { trackEvent, AnalyticsEvent } from '../lib/analytics';
 import { useSubscription } from '../hooks/useSubscription';
 import { FREE_LIMITS } from '../lib/premium';
+import { SAFE_MODE } from '../config/features';
 
 export default function Lists() {
   const { user, profile } = useAuth();
@@ -32,12 +33,14 @@ export default function Lists() {
 
   const fetchLists = async () => {
     if (!user) return;
+    if (SAFE_MODE) console.log("[BOOT_STAGE] Lists: Fetching lists (SAFE_MODE)");
     try {
       const { data, error } = await supabase
         .from('shopping_lists')
-        .select('*')
+        .select('id, name, status, created_at, market_name, estimated_total')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(SAFE_MODE ? 20 : 100);
       
       // We don't check isMounted here because it might be called from handleCreateList
       // but inside useEffect we will wrap it.
@@ -66,7 +69,7 @@ export default function Lists() {
 
     safeFetch();
 
-    if (!user) return;
+    if (!user || SAFE_MODE) return;
 
     // Realtime subscription
     const channel = supabase.channel(`lists_page_${user.id}`);

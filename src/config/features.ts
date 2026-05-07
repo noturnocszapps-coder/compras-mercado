@@ -1,24 +1,6 @@
-// src/config/features.ts
+export const SAFE_MODE = true;
+export const DEBUG_LOGS = true;
 
-/**
- * Professional Feature Flagging System.
- * Controlled by subscription status and/or environment variables.
- */
-
-export const FEATURES = {
-  // AI Features
-  premiumScanner: true,
-  invoiceIAExtraction: false, // Beta
-  advancedInsights: true,
-  
-  // Billing & SaaS
-  familyMode: true,
-  priceHistory: true,
-  economyScore: true,
-  
-  // Platform
-  pwaMode: true,
-  notifications: true,
-} as const;
-
-export type AppFeatures = typeof FEATURES;
+if (DEBUG_LOGS) {
+  console.log("[CONFIG] SAFE_MODE is", SAFE_MODE);
+}

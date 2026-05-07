@@ -9,18 +9,23 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error('Auth error:', error.message);
-        navigate('/login');
-        return;
-      }
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Auth error:', error.message);
+          navigate('/login');
+          return;
+        }
 
-      if (session) {
-        await refreshProfile();
-        navigate('/dashboard');
-      } else {
+        if (session) {
+          await refreshProfile();
+          navigate('/dashboard');
+        } else {
+          navigate('/login');
+        }
+      } catch (err) {
+        console.error('[AUTH_CALLBACK] Critical error:', err);
         navigate('/login');
       }
     };
