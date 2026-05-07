@@ -118,7 +118,7 @@ export default function Lists() {
     );
 
     try {
-      console.log("[CREATE_LIST] Payload:", {
+      console.log("[CREATE_LIST] Enviando para service:", {
         name: trimmedName,
         market_name: newMarket.trim() || null,
         user_id: user.id
@@ -127,25 +127,26 @@ export default function Lists() {
       const responsePromise = listService.createList({
         name: trimmedName,
         market_name: newMarket.trim() || null,
-        user_id: user.id,
-        household_id: profile?.household_id || null,
+        user_id: user.id
       });
 
       // Race between the service and the timeout
-      const { data, error }: any = await Promise.race([responsePromise, timeoutPromise]);
+      const response: any = await Promise.race([responsePromise, timeoutPromise]);
+      const { data, error } = response;
       
       if (error) {
-        console.error("[CREATE_LIST] Erro:", error);
-        if (error.code === '42501') {
-          throw new Error('Permissão negada ao criar lista. Verifique as políticas do Supabase.');
-        }
-        throw error;
+        console.error("[CREATE_LIST_UI_ERROR]", error);
+        // Show real message for debugging in dev
+        const message = error.message || 'Não foi possível criar a lista.';
+        throw new Error(message);
       }
       
-      console.log("[CREATE_LIST] Resultado:", data);
+      console.log("[CREATE_LIST_UI_SUCCESS]", data);
       
       trackEvent(AnalyticsEvent.LIST_CREATED, { market: newMarket });
       toast.success('Lista criada com sucesso!', { id: creationToast });
+      
+      // CLOSE MODAL IMMEDIATELY
       setShowNewModal(false);
       setNewName('');
       setNewMarket('');

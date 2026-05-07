@@ -85,9 +85,10 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 import { ENV } from './config/env';
-import { useRegisterSW } from 'virtual:pwa-register/react';
+// import { useRegisterSW } from 'virtual:pwa-register/react';
 
 export default function App() {
+  /* 
   useRegisterSW({
     onNeedRefresh() {
       console.log("[PWA] New version available, reloading...");
@@ -97,6 +98,7 @@ export default function App() {
       console.log("[PWA] App ready for offline use.");
     }
   });
+  */
 
   React.useEffect(() => {
     console.log("[BOOT] App mounted successfully.");
@@ -113,7 +115,7 @@ export default function App() {
       <AuthProvider>
         <UIProvider>
           <Router>
-            <OfflineStatus />
+            {/* <OfflineStatus /> */}
             <Toaster 
               position="top-center"
               toastOptions={{

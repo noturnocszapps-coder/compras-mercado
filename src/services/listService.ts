@@ -8,32 +8,42 @@ export interface CreateListData {
 }
 
 export const listService = {
-  async createList({ name, market_name, user_id, household_id }: CreateListData) {
-    console.log("[CREATE_LIST] Iniciando criação com:", { name, market_name, user_id, household_id });
+  async createList({ name, market_name, user_id }: CreateListData) {
+    console.log("[CREATE_LIST] Iniciando criação com payload mínimo:", { name, market_name, user_id });
+    
+    if (!user_id) {
+      console.error("[CREATE_LIST] Erro: user_id ausente");
+      return { data: null, error: { message: "Usuário não autenticado" } };
+    }
+
     try {
       const { data, error } = await supabase
         .from('shopping_lists')
         .insert({
           name,
-          market_name,
+          market_name: market_name || null,
           user_id,
-          household_id,
           status: 'active',
           estimated_total: 0,
           real_total: 0
         })
-        .select()
+        .select('*')
         .single();
       
       if (error) {
-        console.error("[CREATE_LIST] Erro do Supabase:", error);
+        console.error("[CREATE_LIST_SUPABASE_ERROR]", {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
         throw error;
       }
       
-      console.log("[CREATE_LIST] Lista criada com sucesso:", data);
+      console.log("[CREATE_LIST] Sucesso:", data);
       return { data, error: null };
     } catch (error: any) {
-      console.error("[CREATE_LIST] Exceção capturada:", error);
+      console.error("[CREATE_LIST_EXCEPTION]", error);
       return { data: null, error };
     }
   },
