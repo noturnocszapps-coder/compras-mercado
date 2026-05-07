@@ -223,32 +223,135 @@ end;
 $$ language plpgsql security definer;
 
 -- Profiles
-create policy "Visible to owners and admins" on public.profiles for select using (auth.uid() = id or is_admin());
-create policy "Editable by owners and admins" on public.profiles for update using (auth.uid() = id or is_admin());
+create policy "Profiles visibility" on public.profiles for select using (auth.uid() = id or is_admin());
+create policy "Profiles update" on public.profiles for update using (auth.uid() = id or is_admin());
 
 -- Households & Members
-create policy "Household visibility" on public.households for select
+create policy "Households select" on public.households for select
 using (owner_id = auth.uid() or exists (select 1 from public.household_members where household_id = public.households.id and user_id = auth.uid()));
 
-create policy "Household members access" on public.household_members for all
-using (user_id = auth.uid() or exists (select 1 from public.household_members where household_id = public.household_members.household_id and user_id = auth.uid() and role in ('owner', 'admin')));
+create policy "Households insert" on public.households for insert
+with check (owner_id = auth.uid());
+
+create policy "Households update" on public.households for update
+using (owner_id = auth.uid() or exists (select 1 from public.household_members where household_id = public.households.id and user_id = auth.uid() and role in ('owner', 'admin')));
+
+create policy "Household members select" on public.household_members for select
+using (user_id = auth.uid() or exists (select 1 from public.household_members m2 where m2.household_id = public.household_members.household_id and m2.user_id = auth.uid()));
+
+create policy "Household members insert" on public.household_members for insert
+with check (exists (select 1 from public.households h where h.id = household_id and h.owner_id = auth.uid()) or exists (select 1 from public.household_members m2 where m2.household_id = household_id and m2.user_id = auth.uid() and m2.role in ('owner', 'admin')));
 
 -- Shopping Lists (Household context)
-create policy "Lists access" on public.shopping_lists for all
+create policy "Lists select" on public.shopping_lists for select
 using (
     user_id = auth.uid() or 
-    (household_id is not null and exists (select 1 from public.household_members where household_id = public.shopping_lists.household_id and user_id = auth.uid()))
+    (household_id is not null and exists (
+        select 1 from public.household_members 
+        where household_id = public.shopping_lists.household_id 
+        and user_id = auth.uid()
+    ))
 );
 
--- Shopping Items
-create policy "Items access" on public.shopping_items for all
+create policy "Lists insert" on public.shopping_lists for insert
+with check (
+    user_id = auth.uid() and (
+        household_id is null or exists (
+            select 1 from public.household_members 
+            where household_id = public.shopping_lists.household_id 
+            and user_id = auth.uid()
+        )
+    )
+);
+
+create policy "Lists update" on public.shopping_lists for update
 using (
     user_id = auth.uid() or 
-    (household_id is not null and exists (select 1 from public.household_members where household_id = public.shopping_items.household_id and user_id = auth.uid()))
+    (household_id is not null and exists (
+        select 1 from public.household_members 
+        where household_id = public.shopping_lists.household_id 
+        and user_id = auth.uid() 
+    ))
+)
+with check (
+    user_id = auth.uid() -- Ownership safety
+);
+
+create policy "Lists delete" on public.shopping_lists for delete
+using (
+    user_id = auth.uid() or 
+    (household_id is not null and exists (
+        select 1 from public.household_members 
+        where household_id = public.shopping_lists.household_id 
+        and user_id = auth.uid() 
+        and role in ('owner', 'admin')
+    ))
+);
+
+-- Shopping Items (Inherit from List Access or direct association)
+create policy "Items select" on public.shopping_items for select
+using (
+    user_id = auth.uid() or 
+    (household_id is not null and exists (
+        select 1 from public.household_members 
+        where household_id = public.shopping_items.household_id 
+        and user_id = auth.uid()
+    )) or
+    exists (
+        select 1 from public.shopping_lists 
+        where id = public.shopping_items.list_id 
+        and (user_id = auth.uid() or (household_id is not null and exists (
+            select 1 from public.household_members 
+            where household_id = public.shopping_lists.household_id 
+            and user_id = auth.uid()
+        )))
+    )
+);
+
+create policy "Items insert" on public.shopping_items for insert
+with check (
+    (user_id = auth.uid()) and
+    (
+        exists (
+            select 1 from public.shopping_lists 
+            where id = list_id 
+            and (user_id = auth.uid() or (household_id is not null and exists (
+                select 1 from public.household_members 
+                where household_id = public.shopping_lists.household_id 
+                and user_id = auth.uid()
+            )))
+        )
+    )
+);
+
+create policy "Items update" on public.shopping_items for update
+using (
+    user_id = auth.uid() or 
+    (household_id is not null and exists (
+        select 1 from public.household_members 
+        where household_id = public.shopping_items.household_id 
+        and user_id = auth.uid()
+    ))
+);
+
+create policy "Items delete" on public.shopping_items for delete
+using (
+    user_id = auth.uid() or 
+    (household_id is not null and exists (
+        select 1 from public.household_members 
+        where household_id = public.shopping_items.household_id 
+        and user_id = auth.uid()
+    ))
 );
 
 -- Inventory
-create policy "Inventory access" on public.home_inventory for all
+create policy "Inventory select" on public.home_inventory for select
+using (
+    user_id = auth.uid() or 
+    (household_id is not null and exists (select 1 from public.household_members where household_id = public.home_inventory.household_id and user_id = auth.uid()))
+);
+
+create policy "Inventory write" on public.home_inventory for all
 using (
     user_id = auth.uid() or 
     (household_id is not null and exists (select 1 from public.household_members where household_id = public.home_inventory.household_id and user_id = auth.uid()))
@@ -306,10 +409,10 @@ end;
 $$ language plpgsql security definer;
 
 -- Trigger for Auth Signup
--- drop trigger if exists on_auth_user_created on auth.users;
--- create trigger on_auth_user_created
---   after insert on auth.users
---   for each row execute procedure public.handle_new_user();
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();
 
 -- Inventory Sync after Shopping List finish
 create or replace function public.sync_inventory_from_list()
