@@ -360,6 +360,26 @@ using (
 -- Subscriptions
 create policy "Subscription view" on public.subscriptions for select using (auth.uid() = user_id or is_admin());
 
+-- Audit Logs
+create policy "Audit logs visibility" on public.audit_logs for select using (auth.uid() = user_id or is_admin());
+create policy "Audit logs insert" on public.audit_logs for insert with check (auth.uid() = user_id);
+
+-- Price History
+create policy "Price history view" on public.price_history for select using (auth.uid() = user_id or (household_id is not null and exists (select 1 from public.household_members where household_id = public.price_history.household_id and user_id = auth.uid())));
+create policy "Price history insert" on public.price_history for insert with check (auth.uid() = user_id);
+
+-- App Feedback
+create policy "Feedback insert" on public.app_feedback for insert with check (auth.uid() = user_id or auth.uid() is null);
+create policy "Feedback view" on public.app_feedback for select using (auth.uid() = user_id or is_admin());
+
+-- Notification Settings
+create policy "Notifications view" on public.notifications_settings for select using (auth.uid() = user_id);
+create policy "Notifications update" on public.notifications_settings for update using (auth.uid() = user_id);
+
+-- AI Scans
+create policy "AI scans view" on public.ai_scans for select using (auth.uid() = user_id);
+create policy "AI scans insert" on public.ai_scans for insert with check (auth.uid() = user_id);
+
 -- 6. FUNCTIONS & TRIGGERS
 
 -- Updated At
@@ -462,7 +482,7 @@ begin
     );
     return null;
 end;
-$$ language plpgsql;
+$$ language plpgsql security definer;
 
 create trigger audit_shopping_lists
     after insert or update or delete on public.shopping_lists
