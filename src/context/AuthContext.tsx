@@ -29,50 +29,81 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const refreshProfile = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
       
-      if (profile) {
-        setProfile(profile);
-      } else {
-        // Ensure profile exists
-        const { data: newProfile, error } = await supabase
+      if (user) {
+        // Fetch profile with error handling - handle case where user exists in Auth but not in public.profiles yet
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .upsert({
-            id: user.id,
-            name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Usuário',
-            email: user.email,
-            avatar_url: user.user_metadata.avatar_url,
-          })
-          .select()
-          .single();
+          .select('*')
+          .eq('id', user.id)
+          .maybeSingle(); // Using maybeSingle to avoid 406/single errors
         
-        if (newProfile) setProfile(newProfile);
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error("[AUTH] Profile fetch error:", profileError);
+        }
+
+        if (profileData) {
+          setProfile(profileData);
+        } else {
+          // Profile doesn't exist, try to create it (self-healing)
+          console.log("[AUTH] Profile not found, creating one for:", user.id);
+          const { data: newProfile, error: upsertError } = await supabase
+            .from('profiles')
+            .upsert({
+              id: user.id,
+              full_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Usuário',
+              email: user.email,
+              avatar_url: user.user_metadata.avatar_url,
+            })
+            .select()
+            .maybeSingle();
+          
+          if (upsertError) {
+            console.error("[AUTH] Profile creation error:", upsertError);
+          }
+          if (newProfile) setProfile(newProfile);
+        }
       }
+    } catch (err) {
+      console.error("[AUTH] Refresh profile critical failure:", err);
     }
   };
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        refreshProfile();
+    let isMounted = true;
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await refreshProfile();
+        }
+      } catch (err) {
+        console.error("[AUTH] Initialization error:", err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-      setLoading(false);
-    });
+    };
+
+    initializeAuth();
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!isMounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
+      
       if (session?.user) {
+        setLoading(true);
         await refreshProfile();
       } else {
         setProfile(null);
@@ -81,6 +112,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, []);

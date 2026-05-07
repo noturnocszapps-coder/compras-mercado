@@ -32,37 +32,59 @@ export default function Lists() {
 
   const fetchLists = async () => {
     if (!user) return;
-    const { data, error } = await supabase
-      .from('shopping_lists')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    
-    if (error) console.error('Error fetching lists:', error);
-    else setLists(data || []);
-    setLoading(false);
+    try {
+      const { data, error } = await supabase
+        .from('shopping_lists')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      // We don't check isMounted here because it might be called from handleCreateList
+      // but inside useEffect we will wrap it.
+      
+      if (error) {
+        console.error('[LISTS] Error fetching lists:', error);
+        setLists([]);
+      } else {
+        setLists(data || []);
+      }
+    } catch (err) {
+      console.error('[LISTS] Critical error fetching lists:', err);
+      setLists([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    fetchLists();
+    let isMounted = true;
+    
+    const safeFetch = async () => {
+      await fetchLists();
+      if (!isMounted) return;
+    };
+
+    safeFetch();
 
     if (!user) return;
 
     // Realtime subscription
-    const subscription = supabase
-      .channel('lists_channel')
+    const channel = supabase.channel(`lists_page_${user.id}`);
+    
+    channel
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'shopping_lists',
         filter: `user_id=eq.${user.id}`
       }, () => {
-        fetchLists();
+        if (isMounted) fetchLists();
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      isMounted = false;
+      supabase.removeChannel(channel);
     };
   }, [user]);
 

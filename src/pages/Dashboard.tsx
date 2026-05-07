@@ -22,73 +22,115 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
     if (!user) return;
 
     // Fetch Month Total and Savings
     const fetchMonthStats = async () => {
-      const { start, end } = getMonthRangeSP();
-      const { data, error } = await supabase
-        .from('shopping_lists')
-        .select('real_total, savings_total, economy_score')
-        .eq('user_id', user.id)
-        .eq('status', 'finished')
-        .gte('finished_at', start.toISOString())
-        .lte('finished_at', end.toISOString());
-      
-      if (error) console.error('Error fetching month stats:', error);
-      else {
-        const total = data.reduce((acc, l) => acc + (Number(l.real_total) || 0), 0);
-        const savings = data.reduce((acc, l) => acc + (Number(l.savings_total) || 0), 0);
-        const avgScore = data.length > 0 ? data.reduce((acc, l) => acc + (Number(l.economy_score) || 0), 0) / data.length : 0;
+      try {
+        const { start, end } = getMonthRangeSP();
+        const { data, error } = await supabase
+          .from('shopping_lists')
+          .select('real_total, savings_total, economy_score')
+          .eq('user_id', user.id)
+          .eq('status', 'finished')
+          .gte('finished_at', start.toISOString())
+          .lte('finished_at', end.toISOString());
         
-        setMonthTotal(total);
-        setTotalSavings(savings);
-        setEconomyScore(Math.round(avgScore));
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('[DASHBOARD] Error fetching month stats:', error);
+          return;
+        }
+
+        if (data) {
+          const total = data.reduce((acc, l) => acc + (Number(l.real_total) || 0), 0);
+          const savings = data.reduce((acc, l) => acc + (Number(l.savings_total) || 0), 0);
+          const avgScore = data.length > 0 ? data.reduce((acc, l) => acc + (Number(l.economy_score) || 0), 0) / data.length : 0;
+          
+          setMonthTotal(total);
+          setTotalSavings(savings);
+          setEconomyScore(Math.round(avgScore));
+        }
+      } catch (err) {
+        console.error('[DASHBOARD] Critical error in month stats:', err);
       }
     };
 
     // Fetch Active Lists
     const fetchActiveLists = async () => {
-      const { data, error } = await supabase
-        .from('shopping_lists')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(3);
-      
-      if (error) console.error('Error fetching active lists:', error);
-      else setActiveLists(data || []);
-      setLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from('shopping_lists')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(3);
+        
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('[DASHBOARD] Error fetching active lists:', error);
+          setActiveLists([]);
+        } else {
+          setActiveLists(data || []);
+        }
+      } catch (err) {
+        console.error('[DASHBOARD] Critical error in active lists:', err);
+        setActiveLists([]);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     };
 
     // Fetch History
     const fetchHistory = async () => {
-      const { data, error } = await supabase
-        .from('shopping_lists')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'finished')
-        .order('finished_at', { ascending: false })
-        .limit(5);
-      
-      if (error) console.error('Error fetching history:', error);
-      else setHistory(data || []);
+      try {
+        const { data, error } = await supabase
+          .from('shopping_lists')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('status', 'finished')
+          .order('finished_at', { ascending: false })
+          .limit(5);
+        
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('[DASHBOARD] Error fetching history:', error);
+          setHistory([]);
+        } else {
+          setHistory(data || []);
+        }
+      } catch (err) {
+        console.error('[DASHBOARD] Critical error in history:', err);
+        setHistory([]);
+      }
     };
 
     // Fetch Inventory
     const fetchInventory = async () => {
-      const { data, error } = await supabase
-        .from('home_inventory')
-        .select('current_quantity, minimum_quantity')
-        .eq('user_id', user.id);
-      
-      if (error) console.error('Error fetching inventory:', error);
-      else {
-        setInventoryStats({
-          total: data.length,
-          low: data.filter(i => (i.current_quantity || 0) <= (i.minimum_quantity || 0)).length
-        });
+      try {
+        const { data, error } = await supabase
+          .from('home_inventory')
+          .select('current_quantity, minimum_quantity') 
+          .eq('user_id', user.id);
+        
+        if (!isMounted) return;
+
+        if (error) {
+          console.error('[DASHBOARD] Error fetching inventory:', error);
+          setInventoryStats({ total: 0, low: 0 });
+        } else if (data) {
+          setInventoryStats({
+            total: data.length,
+            low: data.filter(i => (Number(i.current_quantity) || 0) <= (Number(i.minimum_quantity) || 0)).length
+          });
+        }
+      } catch (err) {
+        console.error('[DASHBOARD] Critical error in inventory:', err);
       }
     };
 
@@ -100,28 +142,33 @@ export default function Dashboard() {
     trackEvent(AnalyticsEvent.ECONOMY_SCORE_CHECK, { score: economyScore });
 
     // Set up real-time subscription for active lists
-    const listsSubscription = supabase
-      .channel('public:shopping_lists')
+    const listsChannel = supabase.channel(`dashboard_${user.id}`);
+    
+    listsChannel
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'shopping_lists',
         filter: `user_id=eq.${user.id}`
       }, () => {
-        fetchActiveLists();
-        fetchHistory();
+        if (isMounted) {
+          fetchActiveLists();
+          fetchHistory();
+          fetchMonthStats();
+        }
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(listsSubscription);
+      isMounted = false;
+      supabase.removeChannel(listsChannel);
     };
   }, [user]);
 
-  const chartData = history.slice().reverse().map(list => ({
-    name: list.name.length > 8 ? list.name.substring(0, 8) + '...' : list.name,
-    gasto: list.real_total || 0,
-    previsto: list.estimated_total || 0
+  const chartData = (history || []).slice().reverse().map(list => ({
+    name: (list.name || '').length > 8 ? list.name.substring(0, 8) + '...' : (list.name || 'Lista'),
+    gasto: Number(list.real_total) || 0,
+    previsto: Number(list.estimated_total) || 0
   }));
 
   return (

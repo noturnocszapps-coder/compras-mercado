@@ -16,18 +16,23 @@ export function useSubscription() {
     }
 
     const fetchSubscription = async () => {
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-        console.error('Error fetching subscription:', error);
+      try {
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle(); // Better than single() to avoid errors when no sub exists
+        
+        if (error) {
+          console.error('Error fetching subscription:', error);
+        }
+        
+        setSubscription(data);
+      } catch (err) {
+        console.error('Critical error in fetchSubscription:', err);
+      } finally {
+        setLoading(false);
       }
-      
-      setSubscription(data);
-      setLoading(false);
     };
 
     fetchSubscription();

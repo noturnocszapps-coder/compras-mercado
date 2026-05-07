@@ -61,13 +61,23 @@ export default function MarketMode() {
     if (!user || !id) return;
 
     const fetchList = async () => {
-      const { data, error } = await supabase
-        .from('shopping_lists')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (data) setList(data);
+      try {
+        const { data, error } = await supabase
+          .from('shopping_lists')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle(); // Using maybeSingle to avoid 406/single errors
+        
+        if (error || !data) {
+          console.error('[MARKET_MODE] List not found or error:', error);
+          navigate('/listas');
+          return;
+        }
+        setList(data);
+      } catch (err) {
+        console.error('[MARKET_MODE] Critical error fetching list:', err);
+        navigate('/listas');
+      }
     };
 
     fetchList();

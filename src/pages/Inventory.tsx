@@ -21,24 +21,37 @@ export default function Inventory() {
   ];
 
   useEffect(() => {
+    let isMounted = true;
     if (!user) return;
 
     const fetchInventory = async () => {
-      const { data, error } = await supabase
-        .from('home_inventory')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) console.error('Error fetching inventory:', error);
-      else setItems(data || []);
-      setLoading(false);
+      try {
+        const { data, error } = await supabase
+          .from('home_inventory')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('[INVENTORY] Error fetching inventory:', error);
+          return;
+        }
+        
+        if (isMounted) {
+          setItems(data || []);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.error('[INVENTORY] Critical error in fetchInventory:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     };
 
     fetchInventory();
 
     const subscription = supabase
-      .channel('inventory_channel')
+      .channel(`inventory_${user.id}`)
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -50,6 +63,7 @@ export default function Inventory() {
       .subscribe();
 
     return () => {
+      isMounted = false;
       supabase.removeChannel(subscription);
     };
   }, [user]);

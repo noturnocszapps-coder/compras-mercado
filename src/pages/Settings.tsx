@@ -70,11 +70,11 @@ export default function Settings() {
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} alt="" className="w-full h-full rounded-2xl object-cover" />
             ) : (
-              profile?.name?.[0]?.toUpperCase() || 'U'
+              (profile?.full_name || profile?.name || 'U')[0].toUpperCase()
             )}
          </div>
          <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-bold truncate">{profile?.name}</h3>
+            <h3 className="text-xl font-bold truncate">{profile?.full_name || profile?.name || 'Usuário'}</h3>
             <p className="text-gray-400 text-sm truncate">{user?.email}</p>
          </div>
          <Button 
@@ -206,7 +206,7 @@ const SettingItem = ({ icon: Icon, label, onClick }: { icon: any, label: string,
 );
 
 const EditProfileModal = ({ user, profile, onClose, onUpdate }: any) => {
-  const [name, setName] = useState(profile?.name || '');
+  const [name, setName] = useState(profile?.full_name || profile?.name || '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
   const [accessibility, setAccessibility] = useState(profile?.accessibility_mode || false);
   const [loading, setLoading] = useState(false);
@@ -223,7 +223,7 @@ const EditProfileModal = ({ user, profile, onClose, onUpdate }: any) => {
       const { error } = await supabase
         .from('profiles')
         .update({
-          name: name.trim(),
+          full_name: name.trim(), // Support the schema provided by user
           avatar_url: avatarUrl.trim() || null,
           accessibility_mode: accessibility
         })

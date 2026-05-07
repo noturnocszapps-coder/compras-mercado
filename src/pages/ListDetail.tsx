@@ -55,17 +55,23 @@ export default function ListDetail() {
     if (!user || !id) return;
 
     const fetchList = async () => {
-      const { data, error } = await supabase
-        .from('shopping_lists')
-        .select('*')
-        .eq('id', id)
-        .single();
-      
-      if (error) {
+      try {
+        const { data, error } = await supabase
+          .from('shopping_lists')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle(); // Using maybeSingle to avoid 406/single errors
+        
+        if (error || !data) {
+          console.error('[LIST_DETAIL] List not found or error:', error);
+          navigate('/listas');
+          return;
+        }
+        setList(data);
+      } catch (err) {
+        console.error('[LIST_DETAIL] Critical error fetching list:', err);
         navigate('/listas');
-        return;
       }
-      setList(data);
     };
 
     fetchList();
