@@ -5,6 +5,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis
 import { formatCurrency, cn } from '../lib/utils';
 import { TrendingUp, ShoppingBag, DollarSign, ArrowUpRight } from 'lucide-react';
 import { Card, Skeleton } from '../components/ui/Card';
+import { PremiumGate } from '../components/PremiumGate';
 
 export default function Reports() {
   const { user } = useAuth();
@@ -51,53 +52,57 @@ export default function Reports() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-         <Card className="p-10 flex flex-col gap-8 shadow-sm">
-            <div className="flex items-center justify-between">
-               <h3 className="text-xl font-black uppercase tracking-tighter">Gastos por Compra</h3>
-               <ArrowUpRight className="text-slate-200" size={32} />
-            </div>
-            <div className="h-80 w-full">
-               <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={categoryData}>
-                     <XAxis dataKey="name" hide />
-                     <Tooltip 
-                        contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)', fontWeight: '900', textTransform: 'uppercase' }}
-                     />
-                     <Bar dataKey="value" fill="#10b981" radius={[12, 12, 0, 0]} />
-                  </BarChart>
-               </ResponsiveContainer>
-            </div>
-         </Card>
+         <PremiumGate feature="Gráficos Avançados">
+           <Card className="p-10 flex flex-col gap-8 shadow-sm">
+              <div className="flex items-center justify-between">
+                 <h3 className="text-xl font-black uppercase tracking-tighter">Gastos por Compra</h3>
+                 <ArrowUpRight className="text-slate-200" size={32} />
+              </div>
+              <div className="h-80 w-full">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={categoryData}>
+                       <XAxis dataKey="name" hide />
+                       <Tooltip 
+                          contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)', fontWeight: '900', textTransform: 'uppercase' }}
+                       />
+                       <Bar dataKey="value" fill="#10b981" radius={[12, 12, 0, 0]} />
+                    </BarChart>
+                 </ResponsiveContainer>
+              </div>
+           </Card>
+         </PremiumGate>
 
-         <Card className="p-10 flex flex-col gap-8 shadow-sm">
-            <div className="flex items-center justify-between">
-               <h3 className="text-xl font-black uppercase tracking-tighter">Distribuição de Valor</h3>
-               <div className="w-8 h-8 rounded-full bg-emerald-50 border-4 border-emerald-100 italic font-black text-primary text-[8px] flex items-center justify-center">ROI</div>
-            </div>
-            <div className="h-80 w-full">
-               <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                     <Pie
-                       data={categoryData}
-                       cx="50%"
-                       cy="50%"
-                       innerRadius={80}
-                       outerRadius={110}
-                       paddingAngle={8}
-                       dataKey="value"
-                       stroke="none"
-                     >
-                       {categoryData.map((_, index) => (
-                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                       ))}
-                     </Pie>
-                     <Tooltip 
-                        contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)', fontWeight: '900' }}
-                     />
-                  </PieChart>
-               </ResponsiveContainer>
-            </div>
-         </Card>
+         <PremiumGate feature="Distribuição de Valor">
+           <Card className="p-10 flex flex-col gap-8 shadow-sm">
+              <div className="flex items-center justify-between">
+                 <h3 className="text-xl font-black uppercase tracking-tighter">Distribuição de Valor</h3>
+                 <div className="w-8 h-8 rounded-full bg-emerald-50 border-4 border-emerald-100 italic font-black text-primary text-[8px] flex items-center justify-center">ROI</div>
+              </div>
+              <div className="h-80 w-full">
+                 <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                       <Pie
+                         data={categoryData}
+                         cx="50%"
+                         cy="50%"
+                         innerRadius={80}
+                         outerRadius={110}
+                         paddingAngle={8}
+                         dataKey="value"
+                         stroke="none"
+                       >
+                         {categoryData.map((_, index) => (
+                           <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                         ))}
+                       </Pie>
+                       <Tooltip 
+                          contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.1)', fontWeight: '900' }}
+                       />
+                    </PieChart>
+                 </ResponsiveContainer>
+              </div>
+           </Card>
+         </PremiumGate>
       </div>
     </div>
   );

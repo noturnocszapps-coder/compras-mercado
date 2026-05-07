@@ -1,3 +1,5 @@
+import { ENV } from '../config/env';
+
 /**
  * Compra Fácil Analytics Helper
  * Lightweight event tracking for Roxou Ecosystem
@@ -12,13 +14,19 @@ export enum AnalyticsEvent {
   VOICE_USED = 'voice_used',
   ECONOMY_SCORE_CHECK = 'economy_score_check',
   INVENTORY_UPDATE = 'inventory_update',
-  PRODUCT_SCAN = 'product_scan'
+  PRODUCT_SCAN = 'product_scan',
+  PREMIUM_PAGE_VIEW = 'premium_page_view',
+  CHECKOUT_STARTED = 'checkout_started',
+  CHECKOUT_COMPLETED = 'checkout_completed',
+  CHECKOUT_CANCELED = 'checkout_canceled',
+  SUBSCRIPTION_ACTIVE = 'subscription_active',
+  SUBSCRIPTION_FAILED = 'subscription_failed',
+  PREMIUM_GATE_VIEWED = 'premium_gate_viewed'
 }
 
 export const trackEvent = (event: AnalyticsEvent, data?: Record<string, any>) => {
-  if (process.env.NODE_ENV === 'production') {
-    // Here we would integrate with PostHog or Vercel Analytics
-    // For now, we log to console in a structured way that Roxou Cloud can pick up
+  if (ENV.isProd) {
+    // Here we would integrate with PostHog or Vercel Analytics using ENV.analytics
     console.log(`[ROXOU_ANALYTICS] ${event}`, data);
   } else {
     console.debug(`[DEBUG_ANALYTICS] ${event}`, data);

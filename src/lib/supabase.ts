@@ -1,14 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  // Graceful fallback for build time
-  console.warn('Supabase environment variables are missing')
-}
+import { ENV } from '../config/env'
 
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder'
+  ENV.supabase.url || 'https://placeholder.supabase.co',
+  ENV.supabase.anonKey || 'placeholder'
 )

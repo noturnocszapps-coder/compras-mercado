@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { listService } from '../services/listService';
-import { ShoppingBag, ChevronRight, Search, Plus, Trash2, Calendar, Target, Loader2 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { ShoppingBag, ChevronRight, Search, Plus, Trash2, Calendar, Target, Loader2, Sparkles } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { formatCurrency, formatDate, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import toast from 'react-hot-toast';
@@ -11,9 +11,13 @@ import { Button } from '../components/ui/Button';
 import { Card, Skeleton } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { trackEvent, AnalyticsEvent } from '../lib/analytics';
+import { useSubscription } from '../hooks/useSubscription';
+import { FREE_LIMITS } from '../lib/premium';
 
 export default function Lists() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
+  const { isPremium } = useSubscription();
   const [lists, setLists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -74,6 +78,12 @@ export default function Lists() {
     
     if (!user) {
       toast.error('Você precisa estar logado.');
+      return;
+    }
+
+    if (!isPremium && lists.length >= FREE_LIMITS.max_active_lists) {
+      toast.error(`Limite de ${FREE_LIMITS.max_active_lists} listas atingido no plano Free.`);
+      navigate('/premium');
       return;
     }
 

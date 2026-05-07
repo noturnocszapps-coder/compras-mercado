@@ -12,10 +12,14 @@ import { Button } from '../components/ui/Button';
 import { Card, Skeleton } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { trackEvent, AnalyticsEvent } from '../lib/analytics';
+import { useSubscription } from '../hooks/useSubscription';
+import { FREE_LIMITS } from '../lib/premium';
+import { PremiumGate } from '../components/PremiumGate';
 
 export default function ListDetail() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { isPremium } = useSubscription();
   const navigate = useNavigate();
   const [list, setList] = useState<any>(null);
   const [items, setItems] = useState<any[]>([]);
@@ -94,6 +98,12 @@ export default function ListDetail() {
   const handleAddItem = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!user || !id || !newItem.name) return;
+
+    if (!isPremium && items.length >= FREE_LIMITS.max_items_per_list) {
+      toast.error(`Limite de ${FREE_LIMITS.max_items_per_list} itens por lista no plano Free.`);
+      navigate('/premium');
+      return;
+    }
 
     try {
       const { data, error } = await supabase
@@ -367,16 +377,18 @@ export default function ListDetail() {
           className="hidden" 
           onChange={handleFileChange}
         />
-        <button 
-          onClick={() => fileInputRef.current?.click()}
-          className={cn(
-             "w-16 h-16 bg-blue-600 text-white rounded-[24px] flex items-center justify-center shadow-2xl transition-all active:scale-90 hover:rotate-12",
-             scanning && "animate-spin"
-           )}
-          disabled={scanning}
-        >
-          <Camera size={28} strokeWidth={3} />
-        </button>
+        <PremiumGate feature="Scanner IA Ilimitado">
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            className={cn(
+               "w-16 h-16 bg-blue-600 text-white rounded-[24px] flex items-center justify-center shadow-2xl transition-all active:scale-90 hover:rotate-12",
+               scanning && "animate-spin"
+             )}
+            disabled={scanning}
+          >
+            <Camera size={28} strokeWidth={3} />
+          </button>
+        </PremiumGate>
         <button 
           onClick={() => setShowAddModal(true)}
           className="w-20 h-20 bg-primary text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-emerald-400/50 transition-all active:scale-90 hover:-rotate-12"
