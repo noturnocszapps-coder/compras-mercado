@@ -31,7 +31,6 @@ export const ENV = {
 const requiredEnvs = [
   'VITE_SUPABASE_URL',
   'VITE_SUPABASE_ANON_KEY',
-  'VITE_STRIPE_PUBLISHABLE_KEY'
 ];
 
 requiredEnvs.forEach(key => {

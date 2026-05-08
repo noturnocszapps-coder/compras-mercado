@@ -1,53 +1,59 @@
-# Compra Fácil by Roxou - Professional SaaS Architecture
+# Compra Fácil by Roxou
 
-Esta aplicação é um gerenciador de compras inteligente alimentado por IA, construído com uma arquitetura SaaS moderna, segura e escalável.
+Aplicação de gerenciamento de listas de compras inteligente.
 
-## 🚀 Tecnologias
+## Tecnologias
+- **Frontend**: React 19 + TypeScript + Tailwind CSS 4
+- **Backend**: Node.js + Express (Bridge para APIs)
+- **Banco de Dados**: Supabase (PostgreSQL)
+- **Pagamentos**: Stripe
+- **IA**: Google Gemini API
 
-- **Frontend:** React + Vite + TypeScript
-- **Styling:** Tailwind CSS + Motion (Framer Motion)
-- **Backend:** Express (Node.js) + Serverless Ready
-- **Database / Auth:** Supabase
-- **Payments:** Stripe (Checkout, Billing, Portal, Webhooks)
-- **AI:** Google Gemini 1.5 Flash
+## Estrutura do Projeto
+- `src/`: Código fonte do frontend React.
+- `api/`: Handlers do backend para processamento de IA e Pagamentos.
+- `server.ts`: Servidor Express unificado (serve a API e o Vite em desenvolvimento).
+- `supabase/`: Migrations e definições do banco de dados.
 
-## 🛡️ Arquitetura de Segurança
+## Como Rodar Localmente
 
-- **Isolamento de Secrets:** Nenhuma chave sensível (`GEMINI_API_KEY`, `STRIPE_SECRET_KEY`) é exposta ao frontend. Toda a inteligência e processamento de pagamentos ocorre no servidor.
-- **Configuração Centralizada:** Todas as variáveis de ambiente públicas são gerenciadas em `src/config/env.ts` com validação em tempo de execução.
-- **Feature Flags:** Sistema de controle de recursos em `src/config/features.ts`.
-- **Billing Seguro:** Mapeamento de preços Stripe feito exclusivamente no backend para evitar manipulações no cliente.
+1. **Instalar dependências**:
+   ```bash
+   npm install
+   ```
 
-## ⚙️ Configuração (Variáveis de Ambiente)
+2. **Configurar variáveis de ambiente**:
+   Crie um arquivo `.env` baseado no `.env.example` e preencha as chaves:
+   - Supabase (URL e Anon Key)
+   - Stripe (Secret e Webhook)
+   - Gemini API Key
 
-Copia o arquivo `.env.example` para `.env` e preencha as variáveis:
+3. **Executar em modo desenvolvimento**:
+   ```bash
+   npm run dev
+   ```
+   O app estará disponível em `http://localhost:3000`.
 
-### Frontend (Propriedade `VITE_`)
+4. **Build para Produção**:
+   ```bash
+   npm run build
+   ```
+
+## Opções de Deploy
+
+### Vercel
+O projeto possui um arquivo `vercel.json` configurado para SPA. Para as rotas de API funcionarem na Vercel, recomenda-se configurar as funções na pasta `api/` seguindo o padrão da Vercel ou utilizar um adapter.
+
+### Servidor Node.js (Railway / Render / Heroku)
+Basta executar:
+```bash
+npm run build
+npm start
+```
+
+## Variáveis de Ambiente Necessárias
 - `VITE_SUPABASE_URL`: URL do seu projeto Supabase.
 - `VITE_SUPABASE_ANON_KEY`: Chave anônima pública do Supabase.
-- `VITE_STRIPE_PUBLISHABLE_KEY`: Chave pública do Stripe.
-- `VITE_APP_URL`: URL base da aplicação (usada para redirects).
-
-### Backend (Segurança Máxima)
-- `GEMINI_API_KEY`: Chave da API do Google Gemini.
+- `GEMINI_API_KEY`: Chave da API do Google AI Studio.
 - `STRIPE_SECRET_KEY`: Chave secreta do Stripe.
-- `STRIPE_WEBHOOK_SECRET`: Segredo para validação de webhooks do Stripe.
-- `SUPABASE_SERVICE_ROLE_KEY`: Chave de serviço (admin) do Supabase para bypass de RLS no backend.
-
-### Stripe Products
-- `STRIPE_PRICE_PREMIUM_MONTHLY`: Price ID do plano mensal.
-- `STRIPE_PRICE_PREMIUM_YEARLY`: Price ID do plano anual.
-- `STRIPE_PRICE_FAMILY_MONTHLY`: Price ID do plano família.
-
-## 📦 Desenvolvendo Localmente
-
-1. `npm install`
-2. Configure o `.env`
-3. `npm run dev` (Inicia o servidor Express + Vite Middleware)
-
-## 🚢 Deploy
-
-O projeto está configurado para deploy em ambientes Node.js ou Vercel (via API routes). O `server.ts` serve como ponto de entrada principal para a plataforma Google Cloud Run onde esta aplicação reside.
-
----
-Desenvolvido com ❤️ por **Roxou**
+- `VITE_STRIPE_PUBLISHABLE_KEY`: Chave pública do Stripe.

@@ -21,7 +21,12 @@ export const Header: React.FC = () => {
         </button>
         <div className="w-10 h-10 bg-slate-200 rounded-full border-2 border-primary overflow-hidden">
           <div className="w-full h-full flex items-center justify-center text-xs font-black text-slate-500">
-            {profile?.name?.[0].toUpperCase()}
+            {profile?.full_name && profile.full_name.length > 0 
+              ? profile.full_name[0].toUpperCase()
+              : profile?.email && profile.email.length > 0
+                ? profile.email[0].toUpperCase()
+                : 'U'
+            }
           </div>
         </div>
       </div>

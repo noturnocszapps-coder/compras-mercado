@@ -26,7 +26,9 @@ export default function MarketMode() {
   const [tempPrice, setTempPrice] = useState('');
   const [loading, setLoading] = useState(true);
 
+  // Voice Assistant disabled for MVP stabilization
   const handleVoiceAction = async (action: any) => {
+    /*
     if (action.action === 'checkItem') {
       try {
         const item = items.find(i => i.name.toLowerCase().includes(action.data.name.toLowerCase()));
@@ -34,7 +36,7 @@ export default function MarketMode() {
           const { error } = await supabase
             .from('shopping_items')
             .update({ 
-               is_checked: true, 
+               checked: true, 
                paid_price: action.data.paidPrice || item.paid_price || item.estimated_price || 0 
             })
             .eq('id', item.id);
@@ -45,6 +47,7 @@ export default function MarketMode() {
         console.error('[MARKET_MODE] Voice action error:', err);
       }
     }
+    */
   };
 
   const categories = [
@@ -100,38 +103,25 @@ export default function MarketMode() {
     fetchList();
     fetchItems();
 
-    const subscription = supabase
-      .channel(`market_items_${id}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'shopping_items',
-        filter: `list_id=eq.${id}`
-      }, () => {
-        fetchItems();
-      })
-      .subscribe();
-
     return () => {
-      supabase.removeChannel(subscription);
+      isMounted = false;
     };
   }, [user, id]);
-
   const toggleCheck = async (itemId: string, checked: boolean) => {
     try {
       // Optimistic Update
-      setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_checked: !checked } : i));
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, checked: !checked } : i));
 
       const { error } = await supabase
         .from('shopping_items')
-        .update({ is_checked: !checked })
+        .update({ checked: !checked })
         .eq('id', itemId);
       
       if (error) throw error;
     } catch (err) {
       console.error('[MARKET_MODE] Error toggling check:', err);
       // Revert if error
-      setItems(prev => prev.map(i => i.id === itemId ? { ...i, is_checked: checked } : i));
+      setItems(prev => prev.map(i => i.id === itemId ? { ...i, checked: checked } : i));
       toast.error('Erro ao atualizar item');
     }
   };
@@ -142,7 +132,7 @@ export default function MarketMode() {
       try {
         const { error } = await supabase
           .from('shopping_items')
-          .update({ paid_price: price, is_checked: true })
+          .update({ paid_price: price, checked: true })
           .eq('id', itemId);
         
         if (error) throw error;
@@ -157,10 +147,10 @@ export default function MarketMode() {
   };
 
   const finishShopping = async () => {
-    if (!confirm('Deseja finalizar esta compra e atualizar seu estoque?')) return;
+    if (!confirm('Deseja finalizar esta compra?')) return;
 
     try {
-      const checkedItems = items.filter(i => i.is_checked);
+      const checkedItems = items.filter(i => i.checked);
       
       // Calculate Stats
       const totalEstimado = items.reduce((acc, item) => acc + (Number(item.estimated_price) || 0) * (Number(item.quantity) || 1), 0);
@@ -184,49 +174,12 @@ export default function MarketMode() {
 
       trackEvent(AnalyticsEvent.LIST_FINISHED, { id, score, itemsCount: checkedItems.length });
 
-      // 2. Process Items (Inventory + Price History)
+      // Inventory/History updates disabled for MVP stabilization
+      /*
       if (checkedItems.length > 0) {
-        for (const item of checkedItems) {
-          // --- RECORD PRICE HISTORY ---
-          await supabase.from('price_history').insert({
-            user_id: user!.id,
-            product_name: item.name,
-            category: item.category,
-            market_name: list?.market_name || 'Mercado Geral',
-            paid_price: item.paid_price || item.estimated_price || 0,
-            purchase_date: getNowSP().toISOString().split('T')[0]
-          });
-
-          // --- UPDATE INVENTORY ---
-          const { data: existing } = await supabase
-            .from('home_inventory')
-            .select('*')
-            .eq('user_id', user!.id)
-            .ilike('name', item.name)
-            .maybeSingle();
-
-          if (existing) {
-            await supabase
-              .from('home_inventory')
-              .update({ 
-                current_quantity: Number(existing.current_quantity) + Number(item.quantity),
-                updated_at: getNowSP().toISOString()
-              })
-              .eq('id', existing.id);
-          } else {
-            await supabase
-              .from('home_inventory')
-              .insert({
-                user_id: user!.id,
-                name: item.name,
-                category: item.category,
-                current_quantity: item.quantity,
-                minimum_quantity: 1,
-                unit: item.unit
-              });
-          }
-        }
+        ...
       }
+      */
       
       toast.success(`Compra finalizada! Score: ${score}/100`, { icon: '🏆' });
       navigate('/dashboard');
@@ -236,31 +189,31 @@ export default function MarketMode() {
     }
   };
 
-  const finishedItemsCount = items.filter(i => i.is_checked).length;
+  const finishedItemsCount = items.filter(i => i.checked).length;
   const progress = items.length > 0 ? (finishedItemsCount / items.length) * 100 : 0;
   
-  const totalGasto = items.reduce((acc, item) => (item.is_checked ? acc + (Number(item.paid_price) || Number(item.estimated_price) || 0) * (Number(item.quantity) || 1) : acc), 0);
+  const totalGasto = items.reduce((acc, item) => (item.checked ? acc + (Number(item.paid_price) || Number(item.estimated_price) || 0) * (Number(item.quantity) || 1) : acc), 0);
   
   const totalEstimado = items.reduce((acc, item) => acc + (Number(item.estimated_price) || 0) * (Number(item.quantity) || 1), 0);
-
   const economia = totalEstimado > totalGasto ? totalEstimado - totalGasto : 0;
 
   const categoryStats = categories.map(cat => {
     const catItems = items.filter(i => i.category === cat);
-    const finished = catItems.filter(i => i.is_checked).length;
+    const finished = catItems.filter(i => i.checked).length;
     const total = catItems.length;
-    const spent = catItems.reduce((acc, item) => (item.is_checked ? acc + (Number(item.paid_price) || Number(item.estimated_price) || 0) * (Number(item.quantity) || 1) : acc), 0);
+    const spent = catItems.reduce((acc, item) => (item.checked ? acc + (Number(item.paid_price) || Number(item.estimated_price) || 0) * (Number(item.quantity) || 1) : acc), 0);
     
     return { name: cat, finished, total, spent, progress: total > 0 ? (finished / total) * 100 : 0 };
   }).filter(s => s.total > 0);
 
   return (
     <div className="flex flex-col gap-8 -mx-6 px-6 bg-[#F0F4F2] min-h-screen-safe pb-safe">
-      <VoiceAssistant 
+      {/* Voice Assistant disabled for MVP */}
+      {/* <VoiceAssistant 
         isOpen={isVoiceAssistantOpen} 
         onClose={closeVoiceAssistant} 
         onAction={handleVoiceAction} 
-      />
+      /> */}
       {/* Header Fixo */}
       <div className="sticky top-0 bg-primary-dark/95 backdrop-blur-md z-40 -mx-6 px-6 py-6 md:py-10 flex flex-col gap-6 md:gap-10 border-b-4 border-primary pt-safe">
         <div className="flex items-center justify-between">
@@ -346,21 +299,21 @@ export default function MarketMode() {
                        key={item.id} 
                        className={cn(
                           "p-6 flex items-center gap-6 cursor-pointer active:scale-95 transition-all overflow-hidden relative",
-                          item.is_checked ? "border-primary bg-emerald-50/50 shadow-inner" : "hover:border-slate-200"
+                          item.checked ? "border-primary bg-emerald-50/50 shadow-inner" : "hover:border-slate-200"
                        )}
-                       onClick={() => toggleCheck(item.id, item.is_checked)}
+                       onClick={() => toggleCheck(item.id, !!item.checked)}
                      >
                         <div className={cn(
                           "w-14 h-14 rounded-full flex items-center justify-center border-4 transition-all flex-shrink-0 relative z-10",
-                          item.is_checked ? "bg-primary border-primary text-white" : "bg-slate-50 border-slate-100 text-transparent"
+                          item.checked ? "bg-primary border-primary text-white" : "bg-slate-50 border-slate-100 text-transparent font-black"
                         )}>
                            <Check size={32} strokeWidth={4} />
                         </div>
                         <div className="flex-1 min-w-0 relative z-10">
-                           <h4 className={cn("text-2xl font-black tracking-tight leading-tight uppercase italic", item.is_checked && "text-primary")}>{item.name}</h4>
+                           <h4 className={cn("text-2xl font-black tracking-tight leading-tight uppercase italic", item.checked && "text-primary")}>{item.name}</h4>
                            <div className="flex items-center gap-2 mt-2">
                               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{item.quantity} {item.unit}</span>
-                              {item.is_checked && (
+                              {item.checked && (
                                 <span className="text-primary font-black italic">{formatCurrency(item.paid_price || item.estimated_price || 0)}</span>
                               )}
                            </div>
@@ -373,12 +326,12 @@ export default function MarketMode() {
                           }}
                           className={cn(
                              "w-14 h-14 rounded-2xl flex items-center justify-center transition-all relative z-10",
-                             item.is_checked ? "bg-primary/10 text-primary" : "bg-slate-50 text-slate-300"
+                             item.checked ? "bg-primary/10 text-primary" : "bg-slate-50 text-slate-300"
                           )}
                         >
                            <ShoppingBag size={24} strokeWidth={3} />
                         </button>
-                        {item.is_checked && (
+                        {item.checked && (
                           <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full -translate-y-12 translate-x-12 blur-2xl"></div>
                         )}
                      </Card>
@@ -427,15 +380,15 @@ export default function MarketMode() {
           </div>
       </Modal>
 
-      {/* Ações Rápidas Mercado */}
-      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-6 z-40">
+      {/* Ações Rápidas Mercado disabled for MVP */}
+      {/* <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-6 z-40">
          <button 
            onClick={openVoiceAssistant}
            className="w-20 h-20 bg-primary text-white rounded-[32px] flex items-center justify-center shadow-2xl shadow-emerald-400/50 hover:scale-110 active:scale-90 transition-all rotate-3 hover:rotate-0"
          >
             <Mic size={32} strokeWidth={4} />
          </button>
-      </div>
+      </div> */}
     </div>
   );
 }

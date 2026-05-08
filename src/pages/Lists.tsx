@@ -67,25 +67,8 @@ export default function Lists() {
 
     safeFetch();
 
-    if (!user) return;
-
-    // Realtime subscription
-    const channel = supabase.channel(`lists_page_${user.id}`);
-    
-    channel
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'shopping_lists',
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        if (isMounted) fetchLists();
-      })
-      .subscribe();
-
     return () => {
       isMounted = false;
-      supabase.removeChannel(channel);
     };
   }, [user]);
 
@@ -104,11 +87,14 @@ export default function Lists() {
       return;
     }
 
+    // Premium limits disabled for MVP stabilization
+    /*
     if (!isPremium && lists.length >= FREE_LIMITS.max_active_lists) {
       toast.error(`Limite de ${FREE_LIMITS.max_active_lists} listas atingido no plano Free.`);
       navigate('/premium');
       return;
     }
+    */
 
     setIsCreating(true);
     const creationToast = toast.loading('Criando lista...');
@@ -277,7 +263,10 @@ export default function Lists() {
                           {list.status === 'active' ? 'Ativa' : 'Finalizada'}
                         </div>
                         <button 
-                          onClick={(e) => handleDelete(list.id, e)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(list.id, e);
+                          }}
                           className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
                         >
                           <Trash2 size={20} />

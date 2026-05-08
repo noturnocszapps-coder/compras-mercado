@@ -28,6 +28,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
+  console.log("[DIAGNOSTIC] AuthProvider render", { user: user?.id, session: !!session, profile: !!profile, loading });
+
   const refreshProfile = async () => {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();

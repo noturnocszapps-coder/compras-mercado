@@ -96,54 +96,6 @@ export default function Settings() {
       </div>
 
       <div className="flex flex-col gap-2">
-         <h4 className="text-xs font-black uppercase text-gray-400 px-4">Plano e Pagamento</h4>
-         <Card className="p-6 flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-               <div className="flex items-center gap-4">
-                  <div className={cn(
-                    "w-12 h-12 rounded-2xl flex items-center justify-center transition-all",
-                    isPremium ? "bg-primary text-white" : "bg-slate-100 text-slate-400"
-                  )}>
-                     {isPremium ? <Crown size={24} /> : <Zap size={24} />}
-                  </div>
-                  <div>
-                     <p className="text-xs font-black uppercase text-slate-400 tracking-widest">Plano Atual</p>
-                     <p className="text-xl font-black text-slate-900 uppercase italic tracking-tighter">
-                        {getPlanLabel(plan as any)}
-                     </p>
-                  </div>
-               </div>
-               {isPremium && (
-                 <div className="text-right">
-                    <p className="text-[8px] font-black uppercase text-slate-300 tracking-widest leading-none">Próxima cobrança</p>
-                    <p className="text-xs font-black text-slate-400 italic">
-                       {new Date(subscription?.current_period_end || '').toLocaleDateString('pt-BR')}
-                    </p>
-                 </div>
-               )}
-            </div>
-
-            <Button 
-              variant={isPremium ? "outline" : "default"}
-              onClick={handlePortal}
-              className="py-6 flex items-center justify-center gap-3"
-              disabled={portalLoading}
-            >
-              {portalLoading ? <Loader2 className="animate-spin" /> : <CreditCard size={20} />}
-              {isPremium ? 'GERENCIAR ASSINATURA' : 'ASSINAR PREMIUM'}
-            </Button>
-         </Card>
-      </div>
-
-      <div className="flex flex-col gap-2">
-         <h4 className="text-xs font-black uppercase text-gray-400 px-4">Ecossistema Roxou</h4>
-         <Card className="overflow-hidden p-0">
-            <SettingItem icon={Layers} label="Explorar Apps Roxou" onClick={() => navigate('/ecosystem')} />
-         </Card>
-      </div>
-
-
-      <div className="flex flex-col gap-2">
          <h4 className="text-xs font-black uppercase text-gray-400 px-4">Ajuda e Suporte</h4>
          <Card className="overflow-hidden p-0">
             <SettingItem icon={Heart} label="Avaliar App" onClick={() => setActiveModal('feedback')} />
@@ -161,7 +113,7 @@ export default function Settings() {
       </Button>
 
       <div className="text-center text-gray-300 text-[10px] uppercase font-black tracking-widest py-4">
-         Versão 2.4.0 (PRO) • Compra Fácil <span className="text-primary opacity-60 italic">by Roxou</span>
+         Versão 2.4.0 (STABLE) • Compra Fácil <span className="text-primary opacity-60 italic">by Roxou</span>
       </div>
 
       <AnimatePresence>

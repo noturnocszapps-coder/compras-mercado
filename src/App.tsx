@@ -11,55 +11,35 @@ import { Button } from './components/ui/Button';
 class ErrorBoundary extends React.Component<any, any> {
   constructor(props: any) {
     super(props);
-    (this as any).state = { hasError: false };
+    (this as any).state = { hasError: false, error: null, errorInfo: null };
   }
 
-  static getDerivedStateFromError(_: Error) {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error("[CRITICAL_REACT_ERROR]", error, errorInfo);
+    (this as any).setState({ errorInfo });
   }
 
-  handleRecovery = () => {
-    console.log("[RECOVERY] Clearing session and redirecting to login");
-    sessionStorage.clear();
-    localStorage.removeItem("comprafacil_safe_error");
-    window.location.href = "/login";
-  };
-
   render() {
-    if ((this as any).state.hasError) {
+    const { hasError, error, errorInfo } = (this as any).state;
+
+    if (hasError) {
       return (
-        <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-20 h-20 bg-red-100 text-red-500 rounded-[32px] flex items-center justify-center mb-6">
-            <AlertCircle size={40} />
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tighter">Ops! Algo deu errado.</h1>
-          <p className="text-slate-500 font-medium max-w-sm mb-8">
-            Encontramos um erro inesperado. Vamos tentar restaurar sua sessão.
-          </p>
-          <div className="flex flex-col gap-3 w-full max-w-xs">
-            <Button 
-              onClick={this.handleRecovery}
-              className="flex items-center justify-center gap-2 py-6 px-8 shadow-xl"
-            >
-              <RefreshCcw size={20} /> RECARREGAR APP
-            </Button>
-            <Button 
-              onClick={() => window.location.href = "/"}
-              variant="outline"
-              className="flex items-center justify-center gap-2 py-6 px-8 border-2"
-            >
-              <Home size={20} /> VOLTAR PARA INÍCIO
-            </Button>
-          </div>
+        <div style={{ background: '#f00', color: '#fff', minHeight: '100vh', padding: 50, fontSize: '20px', zIndex: 999999, position: 'fixed', inset: 0 }}>
+          <h1 style={{ fontSize: '40px' }}>ERROR REAL APP 2026</h1>
+          <hr />
+          <p>PATH: {window.location.pathname}</p>
+          <p>ERROR: {error?.message}</p>
+          <pre style={{ background: '#000', padding: 20 }}>{error?.stack}</pre>
+          <pre style={{ background: '#333', padding: 20 }}>{errorInfo?.componentStack}</pre>
         </div>
       );
     }
 
-    return (this as any).props.children;
+    return (this.props as any).children;
   }
 }
 
@@ -97,7 +77,7 @@ const LoadingScreen = ({ text = 'Carregando...' }: { text?: string }) => {
     window.location.href = '/login';
   };
 
-  if (showRecovery) {
+    if (showRecovery) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="w-20 h-20 bg-amber-100 text-amber-500 rounded-[32px] flex items-center justify-center mb-6 animate-pulse">
@@ -132,6 +112,8 @@ const LoadingScreen = ({ text = 'Carregando...' }: { text?: string }) => {
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
+  console.log("[DIAGNOSTIC] PrivateRoute render", { user: user?.id, loading });
+  
   if (loading) return <LoadingScreen text="Verificando acesso..." />;
   
   if (!user) {
@@ -169,6 +151,7 @@ export default function App() {
               }}
             />
             <Routes>
+              <Route path="/debug-real" element={<div style={{padding:100, fontSize: 50, background: 'blue', color: 'white'}}>DEBUG REAL OK 2026</div>} />
               <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
               <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
               <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
@@ -177,12 +160,14 @@ export default function App() {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/listas" element={<Lists />} />
                 <Route path="/listas/:id" element={<ListDetail />} />
-                <Route path="/estoque" element={<Inventory />} />
-                <Route path="/relatorios" element={<Reports />} />
+                
+                {/* Isolated for MVP stabilization */}
+                <Route path="/estoque" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/relatorios" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/configuracoes" element={<Settings />} />
-                <Route path="/premium" element={<Premium />} />
-                <Route path="/billing/success" element={<BillingSuccess />} />
-                <Route path="/ecosystem" element={<EcosystemPage />} />
+                <Route path="/premium" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/billing/success" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/ecosystem" element={<Navigate to="/dashboard" replace />} />
               </Route>
   
               <Route path="/mercado/:id" element={<PrivateRoute><MarketMode /></PrivateRoute>} />

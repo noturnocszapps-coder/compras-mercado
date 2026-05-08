@@ -50,7 +50,12 @@ export default function Dashboard() {
           
           setMonthTotal(total);
           setTotalSavings(savings);
-          setEconomyScore(Math.round(avgScore));
+          const newScore = Math.round(avgScore);
+          setEconomyScore(newScore);
+          
+          if (newScore > 0) {
+            trackEvent(AnalyticsEvent.ECONOMY_SCORE_CHECK, { score: newScore });
+          }
         }
       } catch (err) {
         console.error('[DASHBOARD] Critical error in month stats:', err);
@@ -121,16 +126,20 @@ export default function Dashboard() {
         if (!isMounted) return;
 
         if (error) {
-          console.error('[DASHBOARD] Error fetching inventory:', error);
+          console.warn('[DASHBOARD_INVENTORY_WARNING]', error.message);
           setInventoryStats({ total: 0, low: 0 });
-        } else if (data) {
+          return;
+        } 
+        
+        if (Array.isArray(data)) {
           setInventoryStats({
             total: data.length,
             low: data.filter(i => (Number(i.current_quantity) || 0) <= (Number(i.minimum_quantity) || 0)).length
           });
         }
       } catch (err) {
-        console.error('[DASHBOARD] Critical error in inventory:', err);
+        console.warn('[DASHBOARD] Inventory query bypassed');
+        setInventoryStats({ total: 0, low: 0 });
       }
     };
 
@@ -139,29 +148,8 @@ export default function Dashboard() {
     fetchHistory();
     fetchInventory();
 
-    trackEvent(AnalyticsEvent.ECONOMY_SCORE_CHECK, { score: economyScore });
-
-    // Set up real-time subscription for active lists
-    const listsChannel = supabase.channel(`dashboard_${user.id}`);
-    
-    listsChannel
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'shopping_lists',
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        if (isMounted) {
-          fetchActiveLists();
-          fetchHistory();
-          fetchMonthStats();
-        }
-      })
-      .subscribe();
-
     return () => {
       isMounted = false;
-      supabase.removeChannel(listsChannel);
     };
   }, [user]);
 
@@ -212,12 +200,6 @@ export default function Dashboard() {
               label="Listas Ativas" 
               value={activeLists.length.toString()} 
               color="bg-blue-50 text-blue-600"
-            />
-            <StatCard 
-              icon={Package} 
-              label="Estoque Baixo" 
-              value={inventoryStats.low.toString()} 
-              color="bg-amber-50 text-amber-600"
             />
             <StatCard 
               icon={Clock} 
@@ -319,7 +301,7 @@ export default function Dashboard() {
              </div>
              <div className="text-[10px] font-black uppercase text-purple-400 tracking-widest bg-purple-50 px-3 py-1 rounded-full">Powered by Gemini</div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              {totalSavings > 0 ? (
                <div className="bg-white p-8 rounded-[40px] border-2 border-emerald-50 flex flex-col gap-4 shadow-xl shadow-emerald-900/5 relative overflow-hidden group">
                   <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform">
@@ -349,26 +331,15 @@ export default function Dashboard() {
                </div>
              )}
 
-             <div className="bg-white p-8 rounded-[40px] border-2 border-blue-50 flex flex-col gap-4 shadow-xl shadow-blue-900/5 relative overflow-hidden group">
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:scale-110 transition-transform">
-                   <ShieldCheck size={24} />
-                </div>
-                <div>
-                   <h4 className="font-black text-slate-900 uppercase italic">Otimização de Estoque</h4>
-                   <p className="text-sm text-slate-400 font-medium italic">"Você tem {inventoryStats.low} itens em nível crítico no estoque. Quer que eu prepare uma lista de reposição?"</p>
-                </div>
-                <Link to="/estoque" className="bold-button-primary !bg-blue-600 !text-[10px] !py-3 !px-6 !shadow-none self-start">REPOR AGORA</Link>
-             </div>
-
              <div className="bg-white p-8 rounded-[40px] border-2 border-slate-50 flex flex-col gap-4 shadow-xl shadow-slate-900/5 relative overflow-hidden group">
                 <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-600 group-hover:scale-110 transition-transform">
                    <Clock size={24} strokeWidth={3} />
                 </div>
                 <div>
-                   <h4 className="font-black text-slate-900 uppercase italic">Aviso de Validade</h4>
-                   <p className="text-sm text-slate-400 font-medium italic">"Temos 2 itens no seu estoque que podem vencer esta semana. Lembre-se de consumi-los!"</p>
+                   <h4 className="font-black text-slate-900 uppercase italic">Histórico Próximo</h4>
+                   <p className="text-sm text-slate-400 font-medium italic">"Continue usando o app para que a IA identifique seus padrões de compra e ajude a economizar."</p>
                 </div>
-                <Link to="/estoque" className="bold-button-primary !bg-slate-600 !text-[10px] !py-3 !px-6 !shadow-none self-start">VER VALIDADES</Link>
+                <Link to="/listas" className="bold-button-primary !bg-slate-600 !text-[10px] !py-3 !px-6 !shadow-none self-start">MINHAS LISTAS</Link>
              </div>
           </div>
         </section>

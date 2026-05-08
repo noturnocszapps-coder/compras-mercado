@@ -37,23 +37,6 @@ export function useSubscription() {
     };
 
     fetchSubscription();
-
-    // Real-time listener
-    const channel = supabase
-      .channel(`subscription_${user.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'subscriptions',
-        filter: `user_id=eq.${user.id}`
-      }, (payload) => {
-        setSubscription(payload.new as Subscription);
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, [user]);
 
   return {

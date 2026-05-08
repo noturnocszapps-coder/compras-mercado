@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
+console.log('--- GLOBAL BUILD 2026 INITIALIZING ---');
+alert('DEBUG: MAIN.TSX CARREGADO');
+
 // Versão do App para controle de cache
 console.log("[APP_VERSION]", import.meta.env.VITE_APP_VERSION || "DEV_MODE");
 console.log("[BUILD_TIME]", (window as any).__APP_BUILD__);

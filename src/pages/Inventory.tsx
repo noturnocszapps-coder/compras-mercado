@@ -52,21 +52,8 @@ export default function Inventory() {
 
     fetchInventory();
 
-    const subscription = supabase
-      .channel(`inventory_${user.id}`)
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'home_inventory',
-        filter: `user_id=eq.${user.id}`
-      }, () => {
-        fetchInventory();
-      })
-      .subscribe();
-
     return () => {
       isMounted = false;
-      supabase.removeChannel(subscription);
     };
   }, [user]);
 
